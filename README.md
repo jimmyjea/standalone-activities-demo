@@ -28,7 +28,7 @@ Activities primitive. Standalone Activities are currently **Public Preview**.
    in heartbeat-checkpointed batches and recover after a Worker restart.
 10. [`10-fairness`](modules/10-fairness/README.md) — use weighted fairness to
     interleave confirmation work for small and large merchants.
-11. [`11-workflow-reuse`](modules/11-workflow-reuse/README.md) — reuse the
+11. [`11-activity-reuse`](modules/11-activity-reuse/README.md) — reuse the
     standalone confirmation Activity as the final step of a fulfillment Workflow.
 
 ## Prerequisites

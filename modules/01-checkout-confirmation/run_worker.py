@@ -18,7 +18,7 @@ BATCH_MODULE_ROOT = Path(__file__).resolve().parents[1] / "07-batch-commands"
 SEARCH_MODULE_ROOT = Path(__file__).resolve().parents[1] / "08-search-attributes"
 SETTLEMENT_MODULE_ROOT = Path(__file__).resolve().parents[1] / "09-long-running"
 FAIRNESS_MODULE_ROOT = Path(__file__).resolve().parents[1] / "10-fairness"
-WORKFLOW_REUSE_MODULE_ROOT = Path(__file__).resolve().parents[1] / "11-workflow-reuse"
+WORKFLOW_REUSE_MODULE_ROOT = Path(__file__).resolve().parents[1] / "11-activity-reuse"
 WORKER_PID_PATH = Path(
     os.getenv(
         "DEMO_WORKER_PID_PATH",
