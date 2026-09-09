@@ -172,6 +172,72 @@ input:disabled {
   font-weight: 700;
 }
 
+.module-dropdown {
+  position: relative;
+}
+
+.module-menu-button {
+  min-width: 240px;
+  min-height: 38px;
+  padding: 0 12px;
+  gap: 14px;
+  color: var(--green);
+  border: 1px solid #b9cfc3;
+  border-radius: 11px;
+  background: #f4faf7;
+  box-shadow: none;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.module-menu-button:hover {
+  background: #eaf5ef;
+}
+
+.module-menu-button #module-menu-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.module-menu {
+  width: 270px;
+  padding: 7px;
+  display: grid;
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 12px);
+  right: 0;
+  gap: 2px;
+  border: 1px solid #d7dfda;
+  border-radius: 13px;
+  background: white;
+  box-shadow: 0 18px 48px rgba(23, 44, 34, 0.17);
+}
+
+.module-menu.hidden {
+  display: none;
+}
+
+.module-menu button {
+  min-height: 32px;
+  padding: 0 10px;
+  justify-content: flex-start;
+  color: var(--ink);
+  border-radius: 7px;
+  background: transparent;
+  box-shadow: none;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.module-menu button:hover,
+.module-menu button.selected {
+  color: var(--green);
+  background: #edf7f1;
+}
+
 .card-fields {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -485,6 +551,122 @@ button:disabled {
 
 .retry-panel.hidden {
   display: none;
+}
+
+.settlement-panel {
+  margin: 4px 0 22px;
+  padding: 18px;
+  border: 1px solid #e5d5b8;
+  border-radius: 14px;
+  background: #fffaf0;
+}
+
+.settlement-panel.hidden {
+  display: none;
+}
+
+.workflow-panel {
+  margin: 4px 0 22px;
+  padding: 18px;
+  border: 1px solid #e5d5b8;
+  border-radius: 14px;
+  background: #fffaf0;
+}
+
+.workflow-panel.hidden {
+  display: none;
+}
+
+.workflow-heading {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.workflow-heading span {
+  color: var(--muted);
+}
+
+.workflow-steps {
+  margin-top: 14px;
+  display: grid;
+  gap: 7px;
+}
+
+.workflow-step {
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-radius: 9px;
+  color: var(--muted);
+  background: white;
+  font-size: 11px;
+}
+
+.workflow-step.active {
+  color: #76500d;
+  background: #fff0c5;
+}
+
+.workflow-step.complete {
+  color: var(--green);
+  background: var(--green-light);
+}
+
+.workflow-step em {
+  font-style: normal;
+  font-weight: 700;
+}
+
+.settlement-panel > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+}
+
+.settlement-panel span {
+  color: var(--muted);
+}
+
+.settlement-track {
+  height: 8px;
+  margin-top: 13px;
+  overflow: hidden;
+  border-radius: 100px;
+  background: #e8ece9;
+}
+
+.settlement-track span {
+  width: 0;
+  height: 100%;
+  display: block;
+  border-radius: inherit;
+  background: var(--green);
+  transition: width 0.35s ease;
+}
+
+.confirmation-results {
+  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.confirmation-result {
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  border: 1px solid #d7e8df;
+  border-radius: 9px;
+  color: var(--ink);
+  background: white;
+  font-size: 11px;
+}
+
+.confirmation-result span {
+  color: var(--green);
+  font-weight: 700;
 }
 
 .retry-heading {
@@ -825,6 +1007,103 @@ button:disabled {
   line-height: 1.6;
 }
 
+.fairness-status {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.fairness-status.hidden {
+  display: none;
+}
+
+.fairness-merchant,
+.dispatch-window {
+  padding: 18px;
+  border: 1px solid #e5d5b8;
+  border-radius: 14px;
+  background: white;
+}
+
+.fairness-merchant > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.fairness-merchant > div:first-child span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.fairness-jobs {
+  margin-top: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.fairness-job {
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #7a8580;
+  background: #e8ece9;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.fairness-job.processing {
+  color: white;
+  background: var(--orange);
+  box-shadow: 0 0 0 4px rgba(232, 113, 58, 0.13);
+}
+
+.fairness-job.completed {
+  color: white;
+  background: var(--green);
+}
+
+.dispatch-window {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.dispatch-window > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dispatch-chip {
+  padding: 6px 9px;
+  border-radius: 100px;
+  color: #76500d;
+  background: #fff0c5;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.fairness-controls-note {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: 16px 18px;
+  border-radius: 12px;
+  color: #285440;
+  background: var(--green-light);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.fairness-controls-note.hidden {
+  display: none;
+}
+
 .operator-card > .error {
   grid-column: 1 / -1;
   margin: -16px 0 0;
@@ -887,9 +1166,13 @@ button:disabled {
     display: none;
   }
 
-  .banner-module-select select {
+  .module-menu-button {
     min-width: 0;
     max-width: 180px;
+  }
+
+  .module-menu {
+    width: 250px;
   }
 
   .operator-card {
@@ -901,6 +1184,10 @@ button:disabled {
   }
 
   .batch-activity-list {
+    grid-template-columns: 1fr;
+  }
+
+  .fairness-status {
     grid-template-columns: 1fr;
   }
 }

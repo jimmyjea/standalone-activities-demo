@@ -13,9 +13,9 @@
         <span class="brand-mark">F</span>
         <span>Fablefox Supply</span>
       </a>
-      <label class="banner-module-select">
+      <div class="banner-module-select">
         <span>Demo module</span>
-        <select id="module-select">
+        <select id="module-select" hidden>
           <option value="confirmation">01 · Basic confirmation</option>
           <option value="webhook-retries">02 · Webhook retries</option>
           <option value="pause-unpause">03 · Operator pause / unpause</option>
@@ -24,8 +24,24 @@
           <option value="update-options">06 · Update Activity options</option>
           <option value="batch-commands">07 · Batch operator commands</option>
           <option value="search-attributes">08 · Search Attributes</option>
+          <option value="long-running">09 · Long-running jobs</option>
+          <option value="fairness">10 · Task Queue fairness</option>
+          <option value="workflow-reuse">11 · Reuse Activity in Workflow</option>
         </select>
-      </label>
+        <div class="module-dropdown">
+          <button
+            id="module-menu-button"
+            class="module-menu-button"
+            type="button"
+            aria-haspopup="listbox"
+            aria-expanded="false"
+          >
+            <span id="module-menu-label">01 · Basic confirmation</span>
+            <span aria-hidden="true">⌄</span>
+          </button>
+          <div id="module-menu" class="module-menu hidden" role="listbox"></div>
+        </div>
+      </div>
     </header>
 
     <main class="checkout-layout">

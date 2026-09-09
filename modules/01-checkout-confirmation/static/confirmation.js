@@ -85,12 +85,117 @@ function renderOperator(order) {
       "update-options",
       "batch-commands",
       "search-attributes",
+      "long-running",
+      "fairness",
     ].includes(order.module)
   )
     return;
 
   byId("operator-panel").classList.remove("hidden");
   byId("activity-step").querySelector("strong").textContent = "Standalone Activity";
+  if (order.module === "long-running") {
+    const completed = order.temporal_status === 2;
+    byId("module-title").textContent = "Long-running Activity";
+    byId("operator-panel").querySelector("h2").textContent = "Worker recovery";
+    byId("pause-button").classList.add("hidden");
+    byId("unpause-button").classList.add("hidden");
+    byId("reset-button").classList.add("hidden");
+    byId("cancel-button").classList.add("hidden");
+    byId("update-retries-button").classList.add("hidden");
+    byId("kill-worker-button").classList.remove("hidden");
+    byId("start-worker-button").classList.remove("hidden");
+    byId("kill-worker-button").disabled = !order.worker_running || completed;
+    byId("start-worker-button").disabled = order.worker_running || completed;
+    byId("update-options-help").classList.add("hidden");
+    byId("bug-state").className = order.worker_running
+      ? "fixed-pill"
+      : "incident-pill";
+    byId("bug-state").textContent = order.worker_running
+      ? "● Worker online"
+      : "● Worker offline";
+    byId("pause-state").className =
+      order.temporal_attempt > 1 ? "paused-pill" : "neutral-pill";
+    byId("pause-state").textContent =
+      order.temporal_attempt > 1
+        ? `Rehydrated · attempt ${order.temporal_attempt}`
+        : "Attempt 1";
+    byId("operator-detail").textContent = completed
+      ? "All 20 confirmations were sent."
+      : order.worker_running
+        ? order.temporal_attempt > 1
+          ? "The replacement Worker resumed from the last heartbeat checkpoint."
+          : "Kill the Worker to interrupt processing, then bring it back."
+        : "The Worker is offline. Temporal retains the latest heartbeat details.";
+    return;
+  }
+
+  if (order.module === "fairness") {
+    const processing = order.fairness_activities.filter(
+      (item) => item.run_state === 2 && item.status === 1,
+    );
+    byId("module-title").textContent = "Task Queue fairness";
+    byId("operator-panel").querySelector("h2").textContent =
+      "Weighted merchant dispatch";
+    byId("pause-button").classList.add("hidden");
+    byId("unpause-button").classList.add("hidden");
+    byId("reset-button").classList.add("hidden");
+    byId("cancel-button").classList.add("hidden");
+    byId("update-retries-button").classList.add("hidden");
+    byId("kill-worker-button").classList.add("hidden");
+    byId("start-worker-button").classList.add("hidden");
+    byId("update-options-help").classList.add("hidden");
+    byId("batch-status").classList.add("hidden");
+    byId("bug-state").className = "neutral-pill";
+    byId("bug-state").textContent =
+      `Small · ${order.small_completed}/10`;
+    byId("pause-state").className = "neutral-pill";
+    byId("pause-state").textContent =
+      `Large · ${order.large_completed}/20`;
+    byId("operator-detail").textContent = order.fairness_complete
+      ? "All confirmations completed without the large merchant starving the small merchant."
+      : "Weight 2 gives the large merchant twice the dispatch share while weight 1 keeps the small merchant moving.";
+
+    byId("fairness-status").classList.remove("hidden");
+    byId("fairness-controls-note").classList.toggle(
+      "hidden",
+      !order.fairness_complete,
+    );
+    for (const merchant of ["small", "large"]) {
+      const container = byId(`${merchant}-fairness-jobs`);
+      container.replaceChildren();
+      for (const item of order.fairness_activities.filter(
+        (activityItem) => activityItem.merchant === merchant,
+      )) {
+        const job = document.createElement("span");
+        job.className =
+          item.status === 2
+            ? "fairness-job completed"
+            : item.run_state === 2
+              ? "fairness-job processing"
+              : "fairness-job";
+        job.textContent = item.confirmation_number;
+        job.title = `${merchant} confirmation ${item.confirmation_number}`;
+        container.append(job);
+      }
+    }
+
+    const processingList = byId("fairness-processing");
+    processingList.replaceChildren();
+    for (const item of processing) {
+      const chip = document.createElement("span");
+      chip.className = "dispatch-chip";
+      chip.textContent =
+        `${item.merchant === "small" ? "Small" : "Large"} #${item.confirmation_number}`;
+      processingList.append(chip);
+    }
+    if (!processing.length) {
+      processingList.textContent = order.fairness_complete
+        ? "All work complete"
+        : "Waiting for dispatch…";
+    }
+    return;
+  }
+
   if (order.module === "batch-commands") {
     byId("module-title").textContent = "Batch operator commands";
     byId("operator-panel").querySelector("h2").textContent =
@@ -321,6 +426,168 @@ function render(order) {
   renderAttempts(order);
   renderOperator(order);
 
+  if (order.module === "workflow-reuse") {
+    const steps = [
+      ["inventory", "Check inventory", "Mock fulfillment Activity"],
+      ["payment", "Process payment", "Mock fulfillment Activity"],
+      ["shipment", "Prepare shipment", "Mock fulfillment Activity"],
+      [
+        "confirmation",
+        "Send confirmation",
+        "Reused send_order_confirmation Activity",
+      ],
+    ];
+    const completedSteps = new Set(order.workflow_steps);
+    const workflowCompleted = order.workflow_status === 2;
+    byId("module-title").textContent = "Workflow Activity reuse";
+    byId("activity-step").querySelector("strong").textContent =
+      "Fulfillment Workflow";
+    byId("webhook-step").querySelector("strong").textContent =
+      "Reused confirmation Activity";
+    byId("webhook-step").querySelector("small").textContent =
+      completedSteps.has("confirmation") ? "Confirmation delivered" : "Waiting";
+    byId("workflow-panel").classList.remove("hidden");
+    byId("workflow-count").textContent =
+      `${completedSteps.size} / 4 steps`;
+    const workflowSteps = byId("workflow-steps");
+    workflowSteps.replaceChildren();
+    for (const [key, label, detail] of steps) {
+      const row = document.createElement("div");
+      const completed = completedSteps.has(key);
+      const active =
+        !completed && steps.findIndex(([stepKey]) => !completedSteps.has(stepKey)) ===
+          steps.findIndex(([stepKey]) => stepKey === key);
+      row.className = `workflow-step ${completed ? "complete" : active ? "active" : ""}`;
+      const text = document.createElement("span");
+      text.innerHTML = `<strong>${label}</strong><br><small>${detail}</small>`;
+      const status = document.createElement("em");
+      status.textContent = completed ? "✓ Complete" : active ? "Running" : "Waiting";
+      row.append(text, status);
+      workflowSteps.append(row);
+    }
+
+    const badge = byId("status-badge");
+    if (workflowCompleted) {
+      badge.className = "status-badge delivered";
+      badge.textContent = "✓ Workflow complete";
+      byId("activity-step").className = "complete";
+      byId("webhook-step").className = "complete";
+      if (order.status === "delivered") {
+        byId("email-subject").textContent = order.subject;
+        byId("email-message").textContent = order.message;
+        byId("provider-id").textContent = order.provider_message_id;
+        byId("delivered-at").textContent = new Date(
+          order.delivered_at,
+        ).toLocaleTimeString();
+        byId("inbox").classList.remove("hidden");
+      }
+      byId("status-detail").textContent =
+        "The Workflow completed three fulfillment Activities, then reused the standalone confirmation implementation.";
+      return true;
+    }
+
+    badge.className = "status-badge queued";
+    badge.innerHTML =
+      `<span class="spinner"></span> Workflow · step ${completedSteps.size + 1}/4`;
+    byId("status-detail").textContent =
+      completedSteps.size < 3
+        ? "The Workflow is running its mocked fulfillment Activities in sequence."
+        : "The Workflow is now reusing send_order_confirmation to deliver the receipt.";
+    return false;
+  }
+
+  if (order.module === "long-running") {
+    const confirmedCount = Math.min(order.heartbeat_confirmed_count || 0, 20);
+    const checkpointCount = Math.floor(confirmedCount / 2);
+    const completed = order.temporal_status === 2;
+    byId("payment-accepted-card").classList.add("hidden");
+    document
+      .querySelector(".confirmation-layout")
+      .classList.add("batch-confirmation");
+    byId("module-title").textContent = "Long-running Activity";
+    byId("activity-step").querySelector("strong").textContent =
+      "Batched confirmations";
+    byId("webhook-step").querySelector("strong").textContent =
+      "20 confirmations sent";
+    byId("webhook-step").querySelector("small").textContent = completed
+      ? "Batch complete"
+      : `${confirmedCount} recorded`;
+    byId("settlement-panel").classList.remove("hidden");
+    byId("settlement-count").textContent =
+      `${confirmedCount} / 20 confirmations · ${checkpointCount} heartbeats`;
+    byId("settlement-progress").style.width = `${confirmedCount * 5}%`;
+    const confirmationResults = byId("confirmation-results");
+    confirmationResults.replaceChildren();
+    for (const confirmation of order.batched_confirmations.filter(
+      (item) => item.confirmation_number <= confirmedCount,
+    )) {
+      const row = document.createElement("div");
+      row.className = "confirmation-result";
+      const label = document.createElement("strong");
+      label.textContent =
+        `Confirmation ${String(confirmation.confirmation_number).padStart(2, "0")}`;
+      const status = document.createElement("span");
+      status.textContent = "✓ Sent";
+      row.append(label, status);
+      confirmationResults.append(row);
+    }
+
+    const badge = byId("status-badge");
+    if (completed) {
+      badge.className = "status-badge delivered";
+      badge.textContent = "✓ Complete";
+      byId("activity-step").className = "complete";
+      byId("webhook-step").className = "complete";
+      byId("status-detail").textContent =
+        "The Activity sent all 20 confirmations in 10 resumable batches.";
+      return true;
+    }
+
+    if (!order.worker_running) {
+      badge.className = "status-badge failed";
+      badge.textContent = `Worker offline · ${confirmedCount}/20`;
+      byId("status-detail").textContent =
+        `Progress is durable at ${confirmedCount} confirmations. Bring the Worker back to resume.`;
+    } else {
+      badge.className = "status-badge queued";
+      badge.innerHTML =
+        `<span class="spinner"></span> Sending · ${confirmedCount}/20`;
+      byId("status-detail").textContent =
+        order.temporal_attempt > 1
+          ? "The Worker rehydrated the Activity from heartbeat details and resumed the next batch."
+          : "Every second, the Activity records two confirmations and heartbeats its progress.";
+    }
+    return false;
+  }
+
+  if (order.module === "fairness") {
+    byId("payment-accepted-card").classList.add("hidden");
+    document
+      .querySelector(".confirmation-layout")
+      .classList.add("batch-confirmation");
+    const completedCount = order.small_completed + order.large_completed;
+    const badge = byId("status-badge");
+    badge.className = order.fairness_complete
+      ? "status-badge delivered"
+      : "status-badge queued";
+    badge.textContent = order.fairness_complete
+      ? "✓ 30 completed"
+      : `${completedCount} / 30 completed`;
+    byId("activity-step").querySelector("strong").textContent =
+      "Fairness Task Queue";
+    byId("activity-step").className = order.fairness_complete
+      ? "complete"
+      : "active";
+    byId("webhook-step").querySelector("strong").textContent =
+      "Merchant confirmations";
+    byId("webhook-step").querySelector("small").textContent =
+      "Each takes two seconds";
+    byId("status-detail").textContent = order.fairness_complete
+      ? "Temporal completed both merchant queues using weighted fair dispatch."
+      : "Three Worker slots expose how Temporal interleaves the two fairness keys.";
+    return order.fairness_complete;
+  }
+
   if (order.module === "batch-commands") {
     byId("payment-accepted-card").classList.add("hidden");
     document
@@ -532,6 +799,26 @@ async function operatorAction(action) {
   }
 }
 
+async function workerAction(action) {
+  const button = byId(`${action}-worker-button`);
+  const originalText = button.textContent;
+  byId("operator-error").textContent = "";
+  button.disabled = true;
+  button.textContent = action === "kill" ? "Killing Worker…" : "Starting Worker…";
+  try {
+    const response = await fetch(`/api/worker/${action}`, { method: "POST" });
+    if (!response.ok) {
+      const body = await response.json();
+      throw new Error(body.detail || `Could not ${action} the Worker.`);
+    }
+  } catch (error) {
+    byId("operator-error").textContent = error.message;
+    button.disabled = false;
+  } finally {
+    button.textContent = originalText;
+  }
+}
+
 byId("pause-button").addEventListener("click", () => operatorAction("pause"));
 byId("unpause-button").addEventListener("click", () => operatorAction("unpause"));
 byId("reset-button").addEventListener("click", () => operatorAction("reset"));
@@ -539,6 +826,8 @@ byId("cancel-button").addEventListener("click", () => operatorAction("cancel"));
 byId("update-retries-button").addEventListener("click", () =>
   operatorAction("update-retries"),
 );
+byId("kill-worker-button").addEventListener("click", () => workerAction("kill"));
+byId("start-worker-button").addEventListener("click", () => workerAction("start"));
 
 async function poll() {
   if (!orderId) {

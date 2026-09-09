@@ -176,3 +176,64 @@ def test_search_group_id_selects_search_attributes_module(tmp_path):
     order = store.get_order("DEMO-SEARCH")
     assert order is not None
     assert order["module"] == "search-attributes"
+
+
+def test_batched_confirmation_progress_is_idempotent(tmp_path):
+    store = DemoStore(tmp_path / "test.db")
+    activity_id = "batched-confirmations:DEMO-BATCHED"
+    store.create_order(
+        order_id="DEMO-BATCHED",
+        customer_name="Jordan Lee",
+        email="jordan@example.com",
+        total="$128.00",
+        activity_id=activity_id,
+    )
+    store.record_confirmation_batch(
+        activity_id=activity_id,
+        first_confirmation=1,
+        last_confirmation=2,
+    )
+    store.record_confirmation_batch(
+        activity_id=activity_id,
+        first_confirmation=1,
+        last_confirmation=2,
+    )
+
+    order = store.get_order("DEMO-BATCHED")
+    assert order is not None
+    assert order["module"] == "long-running"
+    assert order["batched_confirmation_count"] == 2
+    assert [
+        confirmation["confirmation_number"]
+        for confirmation in order["batched_confirmations"]
+    ] == [1, 2]
+
+
+def test_fairness_group_id_selects_fairness_module(tmp_path):
+    store = DemoStore(tmp_path / "test.db")
+    store.create_order(
+        order_id="DEMO-FAIR",
+        customer_name="Jordan Lee",
+        email="jordan@example.com",
+        total="$128.00",
+        activity_id="fairness-group:DEMO-FAIR",
+    )
+
+    order = store.get_order("DEMO-FAIR")
+    assert order is not None
+    assert order["module"] == "fairness"
+
+
+def test_fulfillment_workflow_id_selects_reuse_module(tmp_path):
+    store = DemoStore(tmp_path / "test.db")
+    store.create_order(
+        order_id="DEMO-WORKFLOW",
+        customer_name="Jordan Lee",
+        email="jordan@example.com",
+        total="$128.00",
+        activity_id="fulfillment-workflow:DEMO-WORKFLOW",
+    )
+
+    order = store.get_order("DEMO-WORKFLOW")
+    assert order is not None
+    assert order["module"] == "workflow-reuse"

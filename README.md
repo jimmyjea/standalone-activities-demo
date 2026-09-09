@@ -24,6 +24,12 @@ Activities primitive. Standalone Activities are currently **Public Preview**.
    long-running Activities and cancel them together using an operator command.
 8. [`08-search-attributes`](modules/08-search-attributes/README.md) — use
    execution status to find and cancel five long-running Activities in a mixed batch.
+9. [`09-long-running`](modules/09-long-running/README.md) — send confirmations
+   in heartbeat-checkpointed batches and recover after a Worker restart.
+10. [`10-fairness`](modules/10-fairness/README.md) — use weighted fairness to
+    interleave confirmation work for small and large merchants.
+11. [`11-workflow-reuse`](modules/11-workflow-reuse/README.md) — reuse the
+    standalone confirmation Activity as the final step of a fulfillment Workflow.
 
 ## Prerequisites
 

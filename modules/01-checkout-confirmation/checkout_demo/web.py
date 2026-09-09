@@ -1,6 +1,9 @@
 import asyncio
 import os
 import random
+import signal
+import subprocess
+import sys
 import uuid
 from datetime import timedelta
 from pathlib import Path
@@ -14,20 +17,28 @@ from temporalio.api.workflowservice.v1 import (
     ResetActivityExecutionRequest,
     UnpauseActivityExecutionRequest,
 )
-from temporalio.common import RetryPolicy
+from temporalio.common import Priority, RetryPolicy
 
 from .activities import send_order_confirmation
 from .models import (
+    BatchConfirmationInput,
     CheckoutRequest,
+    ConfirmationBatchRequest,
     ConfirmationWebhook,
+    FairnessConfirmationInput,
     SearchAttributeJob,
     SendConfirmationInput,
 )
 from .store import DemoStore
-from .temporal import TASK_QUEUE, get_temporal_client
+from .temporal import FAIRNESS_TASK_QUEUE, TASK_QUEUE, get_temporal_client
 
 MODULE_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = MODULE_ROOT.parents[1]
 STATIC_ROOT = MODULE_ROOT / "static"
+RUN_WORKER_PATH = MODULE_ROOT / "run_worker.py"
+WORKER_PID_PATH = Path(
+    os.getenv("DEMO_WORKER_PID_PATH", MODULE_ROOT / "data" / "worker.pid")
+)
 ORDER_TOTAL = "$128.00"
 # The prerelease Server returns PAUSED before the stable SDK names this enum value.
 PAUSED_ACTIVITY_STATUS = 7
@@ -48,6 +59,29 @@ def _search_attribute_jobs(order_id: str) -> list[SearchAttributeJob]:
         )
         for index in range(1, 11)
     ]
+
+
+def _fairness_jobs(order_id: str) -> list[FairnessConfirmationInput]:
+    jobs: list[FairnessConfirmationInput] = []
+    for index in range(1, 11):
+        jobs.append(
+            FairnessConfirmationInput(
+                activity_id=f"fairness:{order_id}:small:{index:02}",
+                merchant="small",
+                confirmation_number=index,
+            )
+        )
+        jobs.extend(
+            [
+                FairnessConfirmationInput(
+                    activity_id=f"fairness:{order_id}:large:{large_index:02}",
+                    merchant="large",
+                    confirmation_number=large_index,
+                )
+                for large_index in (index * 2 - 1, index * 2)
+            ]
+        )
+    return jobs
 
 app = FastAPI(title="Standalone Activities Checkout Demo")
 app.mount("/static", StaticFiles(directory=STATIC_ROOT), name="static")
@@ -79,6 +113,9 @@ async def checkout(request: CheckoutRequest) -> dict[str, str]:
     is_update_options_demo = request.module == "update-options"
     is_batch_demo = request.module == "batch-commands"
     is_search_attributes_demo = request.module == "search-attributes"
+    is_long_running_demo = request.module == "long-running"
+    is_fairness_demo = request.module == "fairness"
+    is_workflow_reuse_demo = request.module == "workflow-reuse"
     if is_pause_demo:
         activity_id = f"pausable-confirmation:{order_id}"
     elif is_reset_demo:
@@ -91,6 +128,12 @@ async def checkout(request: CheckoutRequest) -> dict[str, str]:
         activity_id = f"batch-group:{order_id}"
     elif is_search_attributes_demo:
         activity_id = f"search-group:{order_id}"
+    elif is_long_running_demo:
+        activity_id = f"batched-confirmations:{order_id}"
+    elif is_fairness_demo:
+        activity_id = f"fairness-group:{order_id}"
+    elif is_workflow_reuse_demo:
+        activity_id = f"fulfillment-workflow:{order_id}"
     elif is_retry_demo:
         activity_id = f"retry-confirmation:{order_id}"
     else:
@@ -132,6 +175,59 @@ async def checkout(request: CheckoutRequest) -> dict[str, str]:
                     )
                     for index in range(1, BATCH_SIZE + 1)
                 )
+            )
+        elif is_workflow_reuse_demo:
+            await client.start_workflow(
+                "FulfillmentWorkflow",
+                args=[activity_input],
+                id=activity_id,
+                task_queue=TASK_QUEUE,
+                execution_timeout=timedelta(minutes=5),
+            )
+        elif is_fairness_demo:
+            await asyncio.gather(
+                *(
+                    client.start_activity(
+                        "send_fairness_confirmation",
+                        args=[job],
+                        id=job.activity_id,
+                        task_queue=FAIRNESS_TASK_QUEUE,
+                        schedule_to_close_timeout=timedelta(minutes=2),
+                        start_to_close_timeout=timedelta(seconds=10),
+                        retry_policy=RetryPolicy(maximum_attempts=1),
+                        priority=Priority(
+                            fairness_key=f"{job.merchant}-merchant",
+                            fairness_weight=(
+                                1.0 if job.merchant == "small" else 2.0
+                            ),
+                        ),
+                    )
+                    for job in _fairness_jobs(order_id)
+                )
+            )
+        elif is_long_running_demo:
+            await client.start_activity(
+                "send_batched_confirmations",
+                args=[
+                    BatchConfirmationInput(
+                        order_id=order_id,
+                        activity_id=activity_id,
+                        batch_url=os.getenv(
+                            "CONFIRMATION_BATCH_URL",
+                            f"http://127.0.0.1:8000/api/orders/{order_id}/confirmation-batch",
+                        ),
+                    )
+                ],
+                id=activity_id,
+                task_queue=TASK_QUEUE,
+                schedule_to_close_timeout=timedelta(minutes=2),
+                start_to_close_timeout=timedelta(seconds=30),
+                heartbeat_timeout=timedelta(seconds=3),
+                retry_policy=RetryPolicy(
+                    initial_interval=timedelta(seconds=1),
+                    backoff_coefficient=1,
+                    maximum_attempts=10,
+                ),
             )
         elif is_search_attributes_demo:
             await asyncio.gather(
@@ -241,6 +337,21 @@ async def get_order(order_id: str) -> dict:
     order = store.get_order(order_id)
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
+    if order["module"] == "workflow-reuse":
+        client = await get_temporal_client()
+        handle = client.get_workflow_handle(order["activity_id"])
+        description = await handle.describe()
+        order["workflow_status"] = int(description.status)
+        if order["workflow_status"] == 2:
+            order["workflow_steps"] = [
+                "inventory",
+                "payment",
+                "shipment",
+                "confirmation",
+            ]
+        else:
+            order["workflow_steps"] = await handle.query("progress")
+        return order
     if order["module"] == "batch-commands":
         activity_ids = [
             f"batch-long-running:{order_id}:{index:02}"
@@ -270,6 +381,45 @@ async def get_order(order_id: str) -> dict:
             order["cancel_requested_count"] == BATCH_SIZE
         )
         order["all_canceled"] = order["canceled_count"] == BATCH_SIZE
+        return order
+    if order["module"] == "fairness":
+        jobs = _fairness_jobs(order_id)
+        descriptions = await asyncio.gather(
+            *(_activity_info(job.activity_id) for job in jobs)
+        )
+        order["fairness_activities"] = [
+            {
+                "activity_id": job.activity_id,
+                "merchant": job.merchant,
+                "confirmation_number": job.confirmation_number,
+                "status": info.status,
+                "run_state": info.run_state,
+                "started_at": (
+                    info.last_started_time.ToDatetime().isoformat()
+                    if info.HasField("last_started_time")
+                    else None
+                ),
+                "closed_at": (
+                    info.close_time.ToDatetime().isoformat()
+                    if info.HasField("close_time")
+                    else None
+                ),
+            }
+            for job, info in zip(jobs, descriptions, strict=True)
+        ]
+        order["small_completed"] = sum(
+            item["merchant"] == "small"
+            and item["status"] == COMPLETED_ACTIVITY_STATUS
+            for item in order["fairness_activities"]
+        )
+        order["large_completed"] = sum(
+            item["merchant"] == "large"
+            and item["status"] == COMPLETED_ACTIVITY_STATUS
+            for item in order["fairness_activities"]
+        )
+        order["fairness_complete"] = (
+            order["small_completed"] == 10 and order["large_completed"] == 20
+        )
         return order
     if order["module"] == "search-attributes":
         jobs = _search_attribute_jobs(order_id)
@@ -301,7 +451,13 @@ async def get_order(order_id: str) -> dict:
         return order
     if (
         order["module"]
-        in {"pause-unpause", "reset", "start-delay", "update-options"}
+        in {
+            "pause-unpause",
+            "reset",
+            "start-delay",
+            "update-options",
+            "long-running",
+        }
         and order["status"] != "delivered"
     ):
         info = await _activity_info(order["activity_id"])
@@ -309,6 +465,16 @@ async def get_order(order_id: str) -> dict:
         order["temporal_attempt"] = info.attempt
         order["temporal_status"] = info.status
         order["activity_started"] = info.HasField("last_started_time")
+        order["heartbeat_count"] = info.total_heartbeat_count
+        if order["module"] == "long-running":
+            heartbeat_confirmed_count = min(
+                info.total_heartbeat_count * 2,
+                order["batched_confirmation_count"],
+            )
+            if info.status == COMPLETED_ACTIVITY_STATUS:
+                heartbeat_confirmed_count = 20
+            order["heartbeat_confirmed_count"] = heartbeat_confirmed_count
+            order["worker_running"] = _worker_pid() is not None
     return order
 
 
@@ -321,6 +487,58 @@ async def _activity_info(activity_id: str):
         )
     )
     return response.info
+
+
+def _worker_pid() -> int | None:
+    if not WORKER_PID_PATH.exists():
+        return None
+    try:
+        pid = int(WORKER_PID_PATH.read_text().strip())
+        os.kill(pid, 0)
+    except (OSError, ValueError):
+        WORKER_PID_PATH.unlink(missing_ok=True)
+        return None
+    return pid
+
+
+@app.get("/api/worker/status")
+async def worker_status() -> dict[str, bool]:
+    return {"running": _worker_pid() is not None}
+
+
+@app.post("/api/worker/kill")
+async def kill_worker() -> dict[str, bool]:
+    pid = _worker_pid()
+    if pid is None:
+        raise HTTPException(status_code=409, detail="The Worker is already offline")
+    os.kill(pid, signal.SIGKILL)
+    for _ in range(30):
+        if _worker_pid() is None:
+            return {"running": False}
+        await asyncio.sleep(0.1)
+    raise HTTPException(status_code=504, detail="Timed out stopping the Worker")
+
+
+@app.post("/api/worker/start")
+async def start_worker() -> dict[str, bool]:
+    if _worker_pid() is not None:
+        raise HTTPException(status_code=409, detail="The Worker is already running")
+    WORKER_PID_PATH.unlink(missing_ok=True)
+    await asyncio.create_subprocess_exec(
+        sys.executable,
+        str(RUN_WORKER_PATH),
+        cwd=PROJECT_ROOT,
+        env=os.environ.copy(),
+        stdin=subprocess.DEVNULL,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+        start_new_session=True,
+    )
+    for _ in range(50):
+        if _worker_pid() is not None:
+            return {"running": True}
+        await asyncio.sleep(0.1)
+    raise HTTPException(status_code=504, detail="Timed out starting the Worker")
 
 
 def _pausable_order(order_id: str) -> dict:
@@ -504,6 +722,32 @@ async def update_activity_retry_options(order_id: str) -> dict[str, int | bool]:
 async def downstream_status(order_id: str) -> dict[str, bool]:
     order = _resettable_order(order_id)
     return {"bug_fixed": order["bug_fixed"]}
+
+
+@app.post("/api/orders/{order_id}/confirmation-batch")
+async def record_confirmation_batch(
+    order_id: str, request: ConfirmationBatchRequest
+) -> dict[str, int]:
+    order = store.get_order(order_id)
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if (
+        order["module"] != "long-running"
+        or request.activity_id != order["activity_id"]
+    ):
+        raise HTTPException(status_code=409, detail="Invalid confirmation batch")
+    if (
+        request.first_confirmation < 1
+        or request.last_confirmation > 20
+        or request.last_confirmation - request.first_confirmation != 1
+    ):
+        raise HTTPException(status_code=400, detail="A batch must contain two confirmations")
+    confirmed_count = store.record_confirmation_batch(
+        activity_id=request.activity_id,
+        first_confirmation=request.first_confirmation,
+        last_confirmation=request.last_confirmation,
+    )
+    return {"confirmed_count": confirmed_count}
 
 
 @app.post("/api/webhooks/confirmation")

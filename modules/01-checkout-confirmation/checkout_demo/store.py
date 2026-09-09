@@ -77,6 +77,13 @@ class DemoStore:
                     updated_at TEXT NOT NULL,
                     maximum_attempts INTEGER NOT NULL
                 );
+
+                CREATE TABLE IF NOT EXISTS batched_confirmations (
+                    activity_id TEXT NOT NULL,
+                    confirmation_number INTEGER NOT NULL,
+                    recorded_at TEXT NOT NULL,
+                    PRIMARY KEY (activity_id, confirmation_number)
+                );
                 """
             )
 
@@ -148,6 +155,23 @@ class DemoStore:
                 """,
                 (order_id,),
             ).fetchone()
+            batched_confirmation_count = connection.execute(
+                """
+                SELECT COUNT(*) AS count
+                FROM batched_confirmations
+                WHERE activity_id = ?
+                """,
+                (row["activity_id"],),
+            ).fetchone()["count"]
+            batched_confirmations = connection.execute(
+                """
+                SELECT confirmation_number, recorded_at
+                FROM batched_confirmations
+                WHERE activity_id = ?
+                ORDER BY confirmation_number
+                """,
+                (row["activity_id"],),
+            ).fetchall()
 
         order = dict(row)
         if order["activity_id"].startswith("retry-confirmation:"):
@@ -164,6 +188,12 @@ class DemoStore:
             order["module"] = "batch-commands"
         elif order["activity_id"].startswith("search-group:"):
             order["module"] = "search-attributes"
+        elif order["activity_id"].startswith("batched-confirmations:"):
+            order["module"] = "long-running"
+        elif order["activity_id"].startswith("fairness-group:"):
+            order["module"] = "fairness"
+        elif order["activity_id"].startswith("fulfillment-workflow:"):
+            order["module"] = "workflow-reuse"
         else:
             order["module"] = "confirmation"
         order["attempts"] = [dict(attempt) for attempt in attempts]
@@ -178,7 +208,39 @@ class DemoStore:
             retry_update["maximum_attempts"] if retry_update else 20
         )
         order["start_delay_seconds"] = 10
+        order["batched_confirmation_count"] = batched_confirmation_count
+        order["batched_confirmations"] = [
+            dict(confirmation) for confirmation in batched_confirmations
+        ]
         return order
+
+    def record_confirmation_batch(
+        self,
+        *,
+        activity_id: str,
+        first_confirmation: int,
+        last_confirmation: int,
+    ) -> int:
+        with self._connect() as connection:
+            for confirmation_number in range(
+                first_confirmation, last_confirmation + 1
+            ):
+                connection.execute(
+                    """
+                    INSERT OR IGNORE INTO batched_confirmations (
+                        activity_id, confirmation_number, recorded_at
+                    ) VALUES (?, ?, ?)
+                    """,
+                    (activity_id, confirmation_number, _now()),
+                )
+            return connection.execute(
+                """
+                SELECT COUNT(*) AS count
+                FROM batched_confirmations
+                WHERE activity_id = ?
+                """,
+                (activity_id,),
+            ).fetchone()["count"]
 
     def record_retry_option_update(
         self, order_id: str, maximum_attempts: int

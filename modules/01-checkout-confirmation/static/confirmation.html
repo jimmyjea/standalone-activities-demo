@@ -56,6 +56,25 @@
           </li>
         </ol>
 
+        <div id="workflow-panel" class="workflow-panel hidden">
+          <div class="workflow-heading">
+            <strong>Fulfillment Workflow</strong>
+            <span id="workflow-count">0 / 4 steps</span>
+          </div>
+          <div id="workflow-steps" class="workflow-steps"></div>
+        </div>
+
+        <div id="settlement-panel" class="settlement-panel hidden">
+          <div>
+            <strong>Confirmation batches</strong>
+            <span id="settlement-count">0 / 20 confirmations</span>
+          </div>
+          <div class="settlement-track">
+            <span id="settlement-progress"></span>
+          </div>
+          <div id="confirmation-results" class="confirmation-results"></div>
+        </div>
+
         <div id="retry-panel" class="retry-panel hidden">
           <div class="retry-heading">
             <strong id="attempt-heading">Webhook attempts</strong>
@@ -112,6 +131,17 @@
           <button id="update-retries-button" class="hidden" type="button" disabled>
             Set maximum attempts to 5
           </button>
+          <button id="kill-worker-button" class="hidden" type="button" disabled>
+            Kill Worker
+          </button>
+          <button
+            id="start-worker-button"
+            class="secondary-button hidden"
+            type="button"
+            disabled
+          >
+            Bring Worker Back
+          </button>
         </div>
         <div id="update-options-help" class="update-options-help hidden">
           <p>You can also update these Activity options:</p>
@@ -151,6 +181,30 @@
             <p id="batch-cli-note" class="hidden"></p>
             <pre><code id="batch-cli-command"></code></pre>
           </div>
+        </div>
+        <div id="fairness-status" class="fairness-status hidden">
+          <div class="fairness-merchant small-merchant">
+            <div>
+              <strong>Small merchant</strong>
+              <span>Fairness weight 1</span>
+            </div>
+            <div id="small-fairness-jobs" class="fairness-jobs"></div>
+          </div>
+          <div class="fairness-merchant large-merchant">
+            <div>
+              <strong>Large merchant</strong>
+              <span>Fairness weight 2</span>
+            </div>
+            <div id="large-fairness-jobs" class="fairness-jobs"></div>
+          </div>
+          <div class="dispatch-window">
+            <strong>Currently processing</strong>
+            <div id="fairness-processing"></div>
+          </div>
+          <p id="fairness-controls-note" class="fairness-controls-note hidden">
+            Temporal provides additional multitenant controls through Priority,
+            Task Queue dispatch rate limits, and Worker concurrency limits.
+          </p>
         </div>
         <p id="operator-error" class="error" role="alert"></p>
       </section>

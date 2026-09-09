@@ -16,6 +16,9 @@ class CheckoutRequest(BaseModel):
         "update-options",
         "batch-commands",
         "search-attributes",
+        "long-running",
+        "fairness",
+        "workflow-reuse",
     ] = "confirmation"
 
 
@@ -43,3 +46,23 @@ class SendConfirmationInput:
 class SearchAttributeJob:
     job_id: str
     long_running: bool
+
+
+@dataclass
+class BatchConfirmationInput:
+    order_id: str
+    activity_id: str
+    batch_url: str
+
+
+class ConfirmationBatchRequest(BaseModel):
+    activity_id: str
+    first_confirmation: int
+    last_confirmation: int
+
+
+@dataclass
+class FairnessConfirmationInput:
+    activity_id: str
+    merchant: str
+    confirmation_number: int
