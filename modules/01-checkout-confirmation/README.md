@@ -13,30 +13,9 @@ renders the webhook payload in a mock inbox.
 
 ## Run it
 
-From the repository root, use three terminals.
-
-1. Start a supported local Temporal server:
-
-   ```bash
-   temporal server start-dev
-   ```
-
-2. Start the Activity Worker:
-
-   ```bash
-   uv run python modules/01-checkout-confirmation/run_worker.py
-   ```
-
-3. Start the web app:
-
-   ```bash
-   uv run uvicorn \
-     --app-dir modules/01-checkout-confirmation \
-     checkout_demo.web:app --reload
-   ```
-
-Open [http://localhost:8000](http://localhost:8000), place the demo order, and
-watch the confirmation receipt arrive.
+Follow the shared setup in the [parent README](../../README.md), then select
+**01 · Basic confirmation**, place the demo order, and watch the confirmation
+receipt arrive.
 
 The Temporal UI is at [http://localhost:8233](http://localhost:8233). The
 Standalone Activity ID uses a business key such as

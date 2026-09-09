@@ -6,7 +6,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from checkout_demo.activities import send_order_confirmation
-from checkout_demo.temporal import FAIRNESS_TASK_QUEUE, TASK_QUEUE, get_temporal_client
+from checkout_demo.temporal import TASK_QUEUE, get_temporal_client
 from temporalio.worker import Worker
 
 RETRY_MODULE_ROOT = Path(__file__).resolve().parents[1] / "02-webhook-retries"
@@ -81,26 +81,20 @@ async def main() -> None:
             run_long_running_batch_activity,
             run_search_attribute_activity,
             send_batched_confirmations,
+            send_fairness_confirmation,
             fulfillment_activities.check_inventory,
             fulfillment_activities.process_payment,
             fulfillment_activities.prepare_shipment,
         ],
         workflows=[FulfillmentWorkflow],
         max_heartbeat_throttle_interval=timedelta(milliseconds=500),
-    )
-    fairness_worker = Worker(
-        client,
-        task_queue=FAIRNESS_TASK_QUEUE,
-        activities=[send_fairness_confirmation],
         max_concurrent_activities=3,
     )
     WORKER_PID_PATH.parent.mkdir(parents=True, exist_ok=True)
     WORKER_PID_PATH.write_text(str(os.getpid()))
-    print(
-        f"Confirmation workers polling {TASK_QUEUE!r} and {FAIRNESS_TASK_QUEUE!r}"
-    )
+    print(f"Confirmation worker polling {TASK_QUEUE!r}")
     try:
-        await asyncio.gather(worker.run(), fairness_worker.run())
+        await worker.run()
     finally:
         if (
             WORKER_PID_PATH.exists()

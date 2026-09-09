@@ -30,7 +30,7 @@ from .models import (
     SendConfirmationInput,
 )
 from .store import DemoStore
-from .temporal import FAIRNESS_TASK_QUEUE, TASK_QUEUE, get_temporal_client
+from .temporal import TASK_QUEUE, get_temporal_client
 
 MODULE_ROOT = Path(__file__).resolve().parents[1]
 PROJECT_ROOT = MODULE_ROOT.parents[1]
@@ -191,7 +191,7 @@ async def checkout(request: CheckoutRequest) -> dict[str, str]:
                         "send_fairness_confirmation",
                         args=[job],
                         id=job.activity_id,
-                        task_queue=FAIRNESS_TASK_QUEUE,
+                        task_queue=TASK_QUEUE,
                         schedule_to_close_timeout=timedelta(minutes=2),
                         start_to_close_timeout=timedelta(seconds=10),
                         retry_policy=RetryPolicy(maximum_attempts=1),

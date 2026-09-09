@@ -2,7 +2,6 @@ from temporalio.client import Client
 from temporalio.envconfig import ClientConfig
 
 TASK_QUEUE = "checkout-confirmations"
-FAIRNESS_TASK_QUEUE = "fairness-confirmations"
 
 _client: Client | None = None
 

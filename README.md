@@ -49,5 +49,32 @@ Install the Python environment from this directory:
 uv sync
 ```
 
+## Run the demo
+
+From the repository root, use three terminals.
+
+1. Start the Temporal server:
+
+   ```bash
+   temporal server start-dev
+   ```
+
+2. Start the shared Worker used by every module:
+
+   ```bash
+   uv run python modules/01-checkout-confirmation/run_worker.py
+   ```
+
+3. Start the web UI:
+
+   ```bash
+   uv run uvicorn \
+     --app-dir modules/01-checkout-confirmation \
+     checkout_demo.web:app --reload
+   ```
+
+Open [http://localhost:8000](http://localhost:8000). The Temporal UI is at
+[http://localhost:8233](http://localhost:8233).
+
 The checkout page has a module dropdown, so all modules run in one browser
 session. Each module also has its own demo narrative.

@@ -13,7 +13,8 @@ Choose **10 · Task Queue fairness** and click **Send Confirmations for Multiple
 Merchants**. Ten small-merchant confirmations and twenty large-merchant
 confirmations are scheduled together. Every confirmation takes two seconds.
 
-Both merchants share the `fairness-confirmations` Task Queue:
+Both merchants share the `checkout-confirmations` Task Queue and Worker used by
+the other modules:
 
 - Small merchant: fairness key `small-merchant`, weight `1`
 - Large merchant: fairness key `large-merchant`, weight `2`
