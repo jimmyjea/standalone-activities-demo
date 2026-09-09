@@ -8,10 +8,28 @@ from checkout_demo.temporal import TASK_QUEUE, get_temporal_client
 from temporalio.worker import Worker
 
 RETRY_MODULE_ROOT = Path(__file__).resolve().parents[1] / "02-webhook-retries"
+PAUSE_MODULE_ROOT = Path(__file__).resolve().parents[1] / "03-pause-unpause"
+RESET_MODULE_ROOT = Path(__file__).resolve().parents[1] / "04-reset"
+DELAY_MODULE_ROOT = Path(__file__).resolve().parents[1] / "05-start-delay"
+UPDATE_MODULE_ROOT = Path(__file__).resolve().parents[1] / "06-update-options"
 sys.path.insert(0, str(RETRY_MODULE_ROOT))
+sys.path.insert(0, str(PAUSE_MODULE_ROOT))
+sys.path.insert(0, str(RESET_MODULE_ROOT))
+sys.path.insert(0, str(DELAY_MODULE_ROOT))
+sys.path.insert(0, str(UPDATE_MODULE_ROOT))
 send_confirmation_with_retries = importlib.import_module(
     "retry_demo.activities"
 ).send_confirmation_with_retries
+send_buggy_confirmation = importlib.import_module("pause_demo.activities").send_buggy_confirmation
+send_resettable_confirmation = importlib.import_module(
+    "reset_demo.activities"
+).send_resettable_confirmation
+send_delayed_confirmation = importlib.import_module(
+    "delay_demo.activities"
+).send_delayed_confirmation
+send_updated_delay_confirmation = importlib.import_module(
+    "update_demo.activities"
+).send_updated_delay_confirmation
 
 
 async def main() -> None:
@@ -19,7 +37,14 @@ async def main() -> None:
     worker = Worker(
         client,
         task_queue=TASK_QUEUE,
-        activities=[send_order_confirmation, send_confirmation_with_retries],
+        activities=[
+            send_order_confirmation,
+            send_confirmation_with_retries,
+            send_buggy_confirmation,
+            send_resettable_confirmation,
+            send_delayed_confirmation,
+            send_updated_delay_confirmation,
+        ],
     )
     print(f"Confirmation worker polling {TASK_QUEUE!r}")
     await worker.run()

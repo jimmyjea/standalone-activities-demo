@@ -8,7 +8,15 @@ const descriptions = {
   confirmation:
     "The web app schedules one durable Activity directly—no Workflow required.",
   "webhook-retries":
-    "The webhook will fail twice. Temporal retries automatically and succeeds on attempt three.",
+    "The webhook is facing intermittent failures. Temporal retries automatically.",
+  "pause-unpause":
+    "A downstream bug keeps failing. An operator pauses the Activity, fixes it, and unpauses.",
+  reset:
+    "A downstream issue is causing delays across Activities. After the fix is deployed, reset running Activities to pick up the changes.",
+  "start-delay":
+    "We want to delay the confrimation and allow the user to cancel the order within a certain period. Otherwise, Temporal will durably send the confirmation.",
+  "update-options":
+    "A start delay is set for too long so an operator decides to shorten the delay.",
 };
 
 function selectModule(value) {

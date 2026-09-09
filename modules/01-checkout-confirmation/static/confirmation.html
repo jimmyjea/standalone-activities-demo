@@ -58,7 +58,7 @@
 
         <div id="retry-panel" class="retry-panel hidden">
           <div class="retry-heading">
-            <strong>Webhook attempts</strong>
+            <strong id="attempt-heading">Webhook attempts</strong>
             <span id="attempt-count">0 / 3</span>
           </div>
           <div id="attempt-list" class="attempt-list"></div>
@@ -83,6 +83,37 @@
         <p id="status-detail" class="status-detail">
           Checkout returned immediately. Waiting for a Worker to process the job…
         </p>
+      </section>
+
+      <section id="operator-panel" class="operator-card hidden">
+        <div>
+          <div class="eyebrow">Operations console</div>
+          <h2>Downstream incident</h2>
+          <p id="operator-detail">
+            The downstream system has a known bug. Pause retries before applying
+            the fix.
+          </p>
+        </div>
+        <div class="operator-state">
+          <span id="bug-state" class="incident-pill">● Bug active</span>
+          <span id="pause-state" class="neutral-pill">Activity running</span>
+        </div>
+        <div class="operator-actions">
+          <button id="pause-button" type="button">Pause Activity &amp; fix bug</button>
+          <button id="unpause-button" class="secondary-button" type="button" disabled>
+            Unpause Activity
+          </button>
+          <button id="reset-button" class="hidden" type="button" disabled>
+            Fix bug &amp; reset Activity
+          </button>
+          <button id="cancel-button" class="secondary-button hidden" type="button" disabled>
+            Cancel confirmation
+          </button>
+          <button id="update-delay-button" class="hidden" type="button" disabled>
+            Update start delay to 5s
+          </button>
+        </div>
+        <p id="operator-error" class="error" role="alert"></p>
       </section>
     </main>
   </body>

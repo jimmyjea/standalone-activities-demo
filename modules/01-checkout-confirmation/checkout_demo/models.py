@@ -7,13 +7,20 @@ from pydantic import BaseModel, EmailStr
 class CheckoutRequest(BaseModel):
     customer_name: str
     email: EmailStr
-    module: Literal["confirmation", "webhook-retries"] = "confirmation"
+    module: Literal[
+        "confirmation",
+        "webhook-retries",
+        "pause-unpause",
+        "reset",
+        "start-delay",
+        "update-options",
+    ] = "confirmation"
 
 
 class ConfirmationWebhook(BaseModel):
     activity_id: str
     order_id: str
-    demo_mode: Literal["standard", "retry"]
+    demo_mode: Literal["standard", "retry", "pause", "reset"]
     recipient: EmailStr
     subject: str
     message: str

@@ -59,6 +59,24 @@ class DemoStore:
                     attempted_at TEXT NOT NULL,
                     PRIMARY KEY (activity_id, attempt)
                 );
+
+                CREATE TABLE IF NOT EXISTS operator_state (
+                    order_id TEXT PRIMARY KEY,
+                    bug_fixed INTEGER NOT NULL DEFAULT 0,
+                    fixed_at TEXT
+                );
+
+                CREATE TABLE IF NOT EXISTS operator_resets (
+                    order_id TEXT PRIMARY KEY,
+                    reset_at TEXT NOT NULL,
+                    previous_attempts TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS start_delay_updates (
+                    order_id TEXT PRIMARY KEY,
+                    updated_at TEXT NOT NULL,
+                    start_delay_seconds INTEGER NOT NULL
+                );
                 """
             )
 
@@ -79,6 +97,10 @@ class DemoStore:
                 ) VALUES (?, ?, ?, ?, 'scheduling', ?, ?)
                 """,
                 (order_id, customer_name, email, total, activity_id, _now()),
+            )
+            connection.execute(
+                "INSERT INTO operator_state (order_id) VALUES (?)",
+                (order_id,),
             )
 
     def set_status(self, order_id: str, status: str, error: str | None = None) -> None:
@@ -106,15 +128,112 @@ class DemoStore:
                 """,
                 (row["activity_id"],),
             ).fetchall()
+            operator_state = connection.execute(
+                "SELECT bug_fixed, fixed_at FROM operator_state WHERE order_id = ?",
+                (order_id,),
+            ).fetchone()
+            reset = connection.execute(
+                """
+                SELECT reset_at, previous_attempts
+                FROM operator_resets
+                WHERE order_id = ?
+                """,
+                (order_id,),
+            ).fetchone()
+            delay_update = connection.execute(
+                """
+                SELECT updated_at, start_delay_seconds
+                FROM start_delay_updates
+                WHERE order_id = ?
+                """,
+                (order_id,),
+            ).fetchone()
 
         order = dict(row)
-        order["module"] = (
-            "webhook-retries"
-            if order["activity_id"].startswith("retry-confirmation:")
-            else "confirmation"
-        )
+        if order["activity_id"].startswith("retry-confirmation:"):
+            order["module"] = "webhook-retries"
+        elif order["activity_id"].startswith("pausable-confirmation:"):
+            order["module"] = "pause-unpause"
+        elif order["activity_id"].startswith("reset-confirmation:"):
+            order["module"] = "reset"
+        elif order["activity_id"].startswith("delayed-confirmation:"):
+            order["module"] = "start-delay"
+        elif order["activity_id"].startswith("updated-delay-confirmation:"):
+            order["module"] = "update-options"
+        else:
+            order["module"] = "confirmation"
         order["attempts"] = [dict(attempt) for attempt in attempts]
+        order["bug_fixed"] = bool(operator_state["bug_fixed"]) if operator_state else False
+        order["fixed_at"] = operator_state["fixed_at"] if operator_state else None
+        order["reset_at"] = reset["reset_at"] if reset else None
+        order["previous_attempts"] = json.loads(reset["previous_attempts"]) if reset else []
+        order["delay_updated_at"] = (
+            delay_update["updated_at"] if delay_update else None
+        )
+        order["start_delay_seconds"] = (
+            delay_update["start_delay_seconds"] if delay_update else 10
+        )
         return order
+
+    def record_start_delay_update(
+        self, order_id: str, start_delay_seconds: int
+    ) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO start_delay_updates (
+                    order_id, updated_at, start_delay_seconds
+                ) VALUES (?, ?, ?)
+                """,
+                (order_id, _now(), start_delay_seconds),
+            )
+
+    def fix_downstream_bug(self, order_id: str) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                """
+                UPDATE operator_state
+                SET bug_fixed = 1, fixed_at = ?
+                WHERE order_id = ?
+                """,
+                (_now(), order_id),
+            )
+
+    def prepare_reset(self, order_id: str, activity_id: str) -> None:
+        with self._connect() as connection:
+            attempts = connection.execute(
+                """
+                SELECT attempt, status, detail, attempted_at
+                FROM webhook_attempts
+                WHERE activity_id = ?
+                ORDER BY attempt
+                """,
+                (activity_id,),
+            ).fetchall()
+            connection.execute(
+                """
+                INSERT OR IGNORE INTO operator_resets (
+                    order_id, reset_at, previous_attempts
+                ) VALUES (?, ?, ?)
+                """,
+                (
+                    order_id,
+                    _now(),
+                    json.dumps([dict(attempt) for attempt in attempts]),
+                ),
+            )
+            connection.execute(
+                "DELETE FROM webhook_attempts WHERE activity_id = ?",
+                (activity_id,),
+            )
+            connection.execute(
+                """
+                UPDATE operator_state
+                SET bug_fixed = 1, fixed_at = ?
+                WHERE order_id = ?
+                """,
+                (_now(), order_id),
+            )
 
     def record_delivery_attempt(
         self,

@@ -11,6 +11,15 @@ Activities primitive. Standalone Activities are currently **Public Preview**.
 2. [`02-webhook-retries`](modules/02-webhook-retries/README.md) — the same UI
    makes the webhook fail twice and visualizes Temporal succeeding on the third
    Activity attempt.
+3. [`03-pause-unpause`](modules/03-pause-unpause/README.md) — an operator pauses
+   a failing Standalone Activity, repairs the downstream system, and unpauses
+   it. This module requires the prerelease Server described in its README.
+4. [`04-reset`](modules/04-reset/README.md) — an operator deploys a downstream
+   fix and resets a repeatedly failing Standalone Activity.
+5. [`05-start-delay`](modules/05-start-delay/README.md) — Temporal delays
+   dispatch for ten seconds, leaving a cancellation window before execution.
+6. [`06-update-options`](modules/06-update-options/README.md) — an operator
+   updates a scheduled Activity's start delay from ten seconds to five.
 
 ## Prerequisites
 
