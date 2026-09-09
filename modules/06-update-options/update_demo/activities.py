@@ -9,7 +9,7 @@ from temporalio import activity
 async def send_updated_delay_confirmation(
     input: SendConfirmationInput,
 ) -> dict[str, str]:
-    """Deliver when Temporal dispatches the option-updated Activity."""
+    """Call a failing downstream webhook to exercise retry option updates."""
     attempt = activity.info().attempt
     provider_message_id = "msg_" + hashlib.sha256(
         input.activity_id.encode()
@@ -17,7 +17,7 @@ async def send_updated_delay_confirmation(
     payload = {
         "activity_id": input.activity_id,
         "order_id": input.order_id,
-        "demo_mode": "standard",
+        "demo_mode": "update",
         "recipient": input.recipient,
         "subject": f"Order {input.order_id} confirmed",
         "message": (

@@ -16,7 +16,7 @@
     </header>
 
     <main class="confirmation-layout">
-      <section class="success-card">
+      <section id="payment-accepted-card" class="success-card">
         <div class="checkmark">✓</div>
         <div class="eyebrow">Payment accepted</div>
         <h1>Thanks, <span id="customer-name">your order is in</span>.</h1>
@@ -109,9 +109,48 @@
           <button id="cancel-button" class="secondary-button hidden" type="button" disabled>
             Cancel confirmation
           </button>
-          <button id="update-delay-button" class="hidden" type="button" disabled>
-            Update start delay to 5s
+          <button id="update-retries-button" class="hidden" type="button" disabled>
+            Set maximum attempts to 5
           </button>
+        </div>
+        <div id="update-options-help" class="update-options-help hidden">
+          <p>You can also update these Activity options:</p>
+          <div class="update-options-grid">
+            <section>
+              <strong>Timeouts</strong>
+              <ul>
+                <li><code>start_to_close_timeout</code></li>
+                <li><code>schedule_to_start_timeout</code></li>
+                <li><code>schedule_to_close_timeout</code></li>
+                <li><code>heartbeat_timeout</code></li>
+              </ul>
+            </section>
+            <section>
+              <strong>Retry policy</strong>
+              <ul>
+                <li><code>maximum_attempts</code></li>
+                <li><code>initial_interval</code></li>
+                <li><code>backoff_coefficient</code></li>
+                <li><code>maximum_interval</code></li>
+                <li><code>non_retryable_error_types</code></li>
+              </ul>
+            </section>
+            <section>
+              <strong>Start delay</strong>
+              <p>
+                <code>start_delay</code> can be rescheduled, including effectively
+                changing it to immediate / zero delay.
+              </p>
+            </section>
+          </div>
+        </div>
+        <div id="batch-status" class="batch-status hidden">
+          <div id="batch-activity-list" class="batch-activity-list"></div>
+          <div id="batch-cli" class="batch-cli hidden">
+            <strong id="batch-cli-heading">Run the same batch cancellation from the CLI:</strong>
+            <p id="batch-cli-note" class="hidden"></p>
+            <pre><code id="batch-cli-command"></code></pre>
+          </div>
         </div>
         <p id="operator-error" class="error" role="alert"></p>
       </section>

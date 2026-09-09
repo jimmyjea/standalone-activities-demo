@@ -14,13 +14,15 @@ class CheckoutRequest(BaseModel):
         "reset",
         "start-delay",
         "update-options",
+        "batch-commands",
+        "search-attributes",
     ] = "confirmation"
 
 
 class ConfirmationWebhook(BaseModel):
     activity_id: str
     order_id: str
-    demo_mode: Literal["standard", "retry", "pause", "reset"]
+    demo_mode: Literal["standard", "retry", "pause", "reset", "update"]
     recipient: EmailStr
     subject: str
     message: str
@@ -35,3 +37,9 @@ class SendConfirmationInput:
     recipient: str
     total: str
     webhook_url: str
+
+
+@dataclass
+class SearchAttributeJob:
+    job_id: str
+    long_running: bool

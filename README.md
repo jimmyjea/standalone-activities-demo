@@ -19,7 +19,11 @@ Activities primitive. Standalone Activities are currently **Public Preview**.
 5. [`05-start-delay`](modules/05-start-delay/README.md) — Temporal delays
    dispatch for ten seconds, leaving a cancellation window before execution.
 6. [`06-update-options`](modules/06-update-options/README.md) — an operator
-   updates a scheduled Activity's start delay from ten seconds to five.
+   reduces a repeatedly failing Activity's maximum attempts from 20 to 5.
+7. [`07-batch-commands`](modules/07-batch-commands/README.md) — launch 10
+   long-running Activities and cancel them together using an operator command.
+8. [`08-search-attributes`](modules/08-search-attributes/README.md) — use
+   execution status to find and cancel five long-running Activities in a mixed batch.
 
 ## Prerequisites
 

@@ -16,12 +16,22 @@ const descriptions = {
   "start-delay":
     "We want to delay the confrimation and allow the user to cancel the order within a certain period. Otherwise, Temporal will durably send the confirmation.",
   "update-options":
-    "A start delay is set for too long so an operator decides to shorten the delay.",
+    "A failing Activity is configured with too many retries, so an operator reduces the maximum attempts.",
+  "batch-commands":
+    "Generate 10 long-running Standalone Activities, then cancel them together from Temporal UI.",
+  "search-attributes":
+    "Generate 10 Activities, then use Search Attributes to find the five that remain running.",
 };
 
 function selectModule(value) {
+  const generatorModule = ["batch-commands", "search-attributes"].includes(value);
   moduleSelect.value = value;
   moduleDescription.textContent = descriptions[value];
+  document.body.classList.toggle("batch-mode", generatorModule);
+  button.querySelector("span").textContent =
+    generatorModule ? "Generate Activities" : "Place order";
+  button.querySelector("strong").textContent =
+    generatorModule ? "" : "$128.00";
   window.localStorage.setItem("standalone-demo-module", value);
 }
 
@@ -33,7 +43,12 @@ form.addEventListener("submit", async (event) => {
   errorMessage.textContent = "";
   button.disabled = true;
   button.classList.add("loading");
-  button.querySelector("span").textContent = "Scheduling confirmation…";
+  const generatorModule = ["batch-commands", "search-attributes"].includes(
+    moduleSelect.value,
+  );
+  button.querySelector("span").textContent = generatorModule
+    ? "Generating Activities…"
+    : "Scheduling confirmation…";
 
   const formData = new FormData(form);
   try {
@@ -58,6 +73,8 @@ form.addEventListener("submit", async (event) => {
     errorMessage.textContent = error.message;
     button.disabled = false;
     button.classList.remove("loading");
-    button.querySelector("span").textContent = "Place order";
+    button.querySelector("span").textContent = generatorModule
+      ? "Generate Activities"
+      : "Place order";
   }
 });

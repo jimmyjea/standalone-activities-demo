@@ -1,5 +1,6 @@
 import asyncio
 import os
+import random
 import uuid
 from datetime import timedelta
 from pathlib import Path
@@ -16,7 +17,12 @@ from temporalio.api.workflowservice.v1 import (
 from temporalio.common import RetryPolicy
 
 from .activities import send_order_confirmation
-from .models import CheckoutRequest, ConfirmationWebhook, SendConfirmationInput
+from .models import (
+    CheckoutRequest,
+    ConfirmationWebhook,
+    SearchAttributeJob,
+    SendConfirmationInput,
+)
 from .store import DemoStore
 from .temporal import TASK_QUEUE, get_temporal_client
 
@@ -28,6 +34,20 @@ PAUSED_ACTIVITY_STATUS = 7
 FAILED_ACTIVITY_STATUS = 3
 RUNNING_ACTIVITY_STATUS = 1
 CANCELED_ACTIVITY_STATUS = 4
+COMPLETED_ACTIVITY_STATUS = 2
+CANCEL_REQUESTED_RUN_STATE = 3
+BATCH_SIZE = 10
+
+
+def _search_attribute_jobs(order_id: str) -> list[SearchAttributeJob]:
+    long_running_indexes = set(random.Random(order_id).sample(range(1, 11), 5))
+    return [
+        SearchAttributeJob(
+            job_id=f"search-activity:{order_id}:{index:02}",
+            long_running=index in long_running_indexes,
+        )
+        for index in range(1, 11)
+    ]
 
 app = FastAPI(title="Standalone Activities Checkout Demo")
 app.mount("/static", StaticFiles(directory=STATIC_ROOT), name="static")
@@ -57,6 +77,8 @@ async def checkout(request: CheckoutRequest) -> dict[str, str]:
     is_reset_demo = request.module == "reset"
     is_start_delay_demo = request.module == "start-delay"
     is_update_options_demo = request.module == "update-options"
+    is_batch_demo = request.module == "batch-commands"
+    is_search_attributes_demo = request.module == "search-attributes"
     if is_pause_demo:
         activity_id = f"pausable-confirmation:{order_id}"
     elif is_reset_demo:
@@ -64,7 +86,11 @@ async def checkout(request: CheckoutRequest) -> dict[str, str]:
     elif is_start_delay_demo:
         activity_id = f"delayed-confirmation:{order_id}"
     elif is_update_options_demo:
-        activity_id = f"updated-delay-confirmation:{order_id}"
+        activity_id = f"options-confirmation:{order_id}"
+    elif is_batch_demo:
+        activity_id = f"batch-group:{order_id}"
+    elif is_search_attributes_demo:
+        activity_id = f"search-group:{order_id}"
     elif is_retry_demo:
         activity_id = f"retry-confirmation:{order_id}"
     else:
@@ -91,7 +117,41 @@ async def checkout(request: CheckoutRequest) -> dict[str, str]:
 
     try:
         client = await get_temporal_client()
-        if is_pause_demo:
+        if is_batch_demo:
+            await asyncio.gather(
+                *(
+                    client.start_activity(
+                        "run_long_running_batch_activity",
+                        args=[f"batch-long-running:{order_id}:{index:02}"],
+                        id=f"batch-long-running:{order_id}:{index:02}",
+                        task_queue=TASK_QUEUE,
+                        schedule_to_close_timeout=timedelta(minutes=15),
+                        start_to_close_timeout=timedelta(minutes=10),
+                        heartbeat_timeout=timedelta(seconds=5),
+                        retry_policy=RetryPolicy(maximum_attempts=1),
+                    )
+                    for index in range(1, BATCH_SIZE + 1)
+                )
+            )
+        elif is_search_attributes_demo:
+            await asyncio.gather(
+                *(
+                    client.start_activity(
+                        "run_search_attribute_activity",
+                        args=[job],
+                        id=job.job_id,
+                        task_queue=TASK_QUEUE,
+                        schedule_to_close_timeout=timedelta(minutes=15),
+                        start_to_close_timeout=timedelta(minutes=10),
+                        heartbeat_timeout=(
+                            timedelta(seconds=5) if job.long_running else None
+                        ),
+                        retry_policy=RetryPolicy(maximum_attempts=1),
+                    )
+                    for job in _search_attribute_jobs(order_id)
+                )
+            )
+        elif is_pause_demo:
             await client.start_activity(
                 "send_buggy_confirmation",
                 args=[activity_input],
@@ -136,10 +196,13 @@ async def checkout(request: CheckoutRequest) -> dict[str, str]:
                 args=[activity_input],
                 id=activity_id,
                 task_queue=TASK_QUEUE,
-                start_delay=timedelta(seconds=10),
-                schedule_to_close_timeout=timedelta(minutes=1),
+                schedule_to_close_timeout=timedelta(minutes=5),
                 start_to_close_timeout=timedelta(seconds=20),
-                retry_policy=RetryPolicy(maximum_attempts=3),
+                retry_policy=RetryPolicy(
+                    initial_interval=timedelta(seconds=1),
+                    backoff_coefficient=1,
+                    maximum_attempts=20,
+                ),
             )
         else:
             activity_type = (
@@ -178,6 +241,64 @@ async def get_order(order_id: str) -> dict:
     order = store.get_order(order_id)
     if order is None:
         raise HTTPException(status_code=404, detail="Order not found")
+    if order["module"] == "batch-commands":
+        activity_ids = [
+            f"batch-long-running:{order_id}:{index:02}"
+            for index in range(1, BATCH_SIZE + 1)
+        ]
+        descriptions = await asyncio.gather(
+            *(_activity_info(activity_id) for activity_id in activity_ids)
+        )
+        order["batch_activities"] = [
+            {
+                "activity_id": activity_id,
+                "status": info.status,
+                "run_state": info.run_state,
+            }
+            for activity_id, info in zip(activity_ids, descriptions, strict=True)
+        ]
+        order["cancel_requested_count"] = sum(
+            activity["run_state"] == CANCEL_REQUESTED_RUN_STATE
+            or activity["status"] == CANCELED_ACTIVITY_STATUS
+            for activity in order["batch_activities"]
+        )
+        order["canceled_count"] = sum(
+            activity["status"] == CANCELED_ACTIVITY_STATUS
+            for activity in order["batch_activities"]
+        )
+        order["all_cancellation_requested"] = (
+            order["cancel_requested_count"] == BATCH_SIZE
+        )
+        order["all_canceled"] = order["canceled_count"] == BATCH_SIZE
+        return order
+    if order["module"] == "search-attributes":
+        jobs = _search_attribute_jobs(order_id)
+        descriptions = await asyncio.gather(
+            *(_activity_info(job.job_id) for job in jobs)
+        )
+        order["search_activities"] = [
+            {
+                "activity_id": job.job_id,
+                "long_running": job.long_running,
+                "status": info.status,
+                "run_state": info.run_state,
+            }
+            for job, info in zip(jobs, descriptions, strict=True)
+        ]
+        order["completed_count"] = sum(
+            item["status"] == COMPLETED_ACTIVITY_STATUS
+            for item in order["search_activities"]
+        )
+        order["canceled_count"] = sum(
+            item["status"] == CANCELED_ACTIVITY_STATUS
+            for item in order["search_activities"]
+        )
+        order["all_long_running_canceled"] = all(
+            item["status"] == CANCELED_ACTIVITY_STATUS
+            for item in order["search_activities"]
+            if item["long_running"]
+        )
+        return order
     if (
         order["module"]
         in {"pause-unpause", "reset", "start-delay", "update-options"}
@@ -238,7 +359,9 @@ def _update_options_order(order_id: str) -> dict:
     return order
 
 
-async def _update_start_delay(activity_id: str, seconds: int) -> None:
+async def _update_retry_maximum_attempts(
+    activity_id: str, maximum_attempts: int
+) -> None:
     configured_cli = os.getenv("TEMPORAL_CLI_PATH")
     local_prerelease_cli = (
         Path(__file__).resolve().parents[4] / "temporal-cli-prerelease" / "temporal"
@@ -252,8 +375,8 @@ async def _update_start_delay(activity_id: str, seconds: int) -> None:
         "update-options",
         "--activity-id",
         activity_id,
-        "--start-delay",
-        f"{seconds}s",
+        "--retry-maximum-attempts",
+        str(maximum_attempts),
         "--address",
         os.getenv("TEMPORAL_ADDRESS", "localhost:7233"),
         "--namespace",
@@ -357,21 +480,24 @@ async def cancel_delayed_activity(order_id: str) -> dict[str, bool]:
     raise HTTPException(status_code=504, detail="Timed out waiting for cancellation")
 
 
-@app.post("/api/orders/{order_id}/update-delay")
-async def update_activity_start_delay(order_id: str) -> dict[str, int | bool]:
+@app.post("/api/orders/{order_id}/update-retries")
+async def update_activity_retry_options(order_id: str) -> dict[str, int | bool]:
     order = _update_options_order(order_id)
-    if order["delay_updated_at"]:
-        raise HTTPException(status_code=409, detail="The start delay was already updated")
+    if order["retry_updated_at"]:
+        raise HTTPException(status_code=409, detail="The retry policy was already updated")
     info = await _activity_info(order["activity_id"])
-    if info.status != RUNNING_ACTIVITY_STATUS or info.HasField("last_started_time"):
+    if info.status != RUNNING_ACTIVITY_STATUS:
         raise HTTPException(
             status_code=409,
-            detail="The Activity has already started and its delay cannot be updated",
+            detail="The Activity is no longer running",
         )
 
-    await _update_start_delay(order["activity_id"], 5)
-    store.record_start_delay_update(order_id, 5)
-    return {"updated": True, "start_delay_seconds": 5}
+    await _update_retry_maximum_attempts(order["activity_id"], 5)
+    store.record_retry_option_update(order_id, 5)
+    return {
+        "updated": True,
+        "retry_maximum_attempts": 5,
+    }
 
 
 @app.get("/api/downstream/{order_id}/status")
@@ -414,6 +540,16 @@ async def confirmation_webhook(
 
     if webhook.demo_mode == "reset" and not order["bug_fixed"]:
         detail = f"Downstream system bug on attempt {temporal_attempt}"
+        store.record_delivery_attempt(
+            activity_id=webhook.activity_id,
+            attempt=temporal_attempt,
+            status="failed",
+            detail=detail,
+        )
+        raise HTTPException(status_code=503, detail=detail)
+
+    if webhook.demo_mode == "update":
+        detail = f"Downstream system unavailable on attempt {temporal_attempt}"
         store.record_delivery_attempt(
             activity_id=webhook.activity_id,
             attempt=temporal_attempt,

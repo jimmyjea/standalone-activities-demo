@@ -72,10 +72,10 @@ class DemoStore:
                     previous_attempts TEXT NOT NULL
                 );
 
-                CREATE TABLE IF NOT EXISTS start_delay_updates (
+                CREATE TABLE IF NOT EXISTS retry_option_updates (
                     order_id TEXT PRIMARY KEY,
                     updated_at TEXT NOT NULL,
-                    start_delay_seconds INTEGER NOT NULL
+                    maximum_attempts INTEGER NOT NULL
                 );
                 """
             )
@@ -140,10 +140,10 @@ class DemoStore:
                 """,
                 (order_id,),
             ).fetchone()
-            delay_update = connection.execute(
+            retry_update = connection.execute(
                 """
-                SELECT updated_at, start_delay_seconds
-                FROM start_delay_updates
+                SELECT updated_at, maximum_attempts
+                FROM retry_option_updates
                 WHERE order_id = ?
                 """,
                 (order_id,),
@@ -158,8 +158,12 @@ class DemoStore:
             order["module"] = "reset"
         elif order["activity_id"].startswith("delayed-confirmation:"):
             order["module"] = "start-delay"
-        elif order["activity_id"].startswith("updated-delay-confirmation:"):
+        elif order["activity_id"].startswith("options-confirmation:"):
             order["module"] = "update-options"
+        elif order["activity_id"].startswith("batch-group:"):
+            order["module"] = "batch-commands"
+        elif order["activity_id"].startswith("search-group:"):
+            order["module"] = "search-attributes"
         else:
             order["module"] = "confirmation"
         order["attempts"] = [dict(attempt) for attempt in attempts]
@@ -167,25 +171,26 @@ class DemoStore:
         order["fixed_at"] = operator_state["fixed_at"] if operator_state else None
         order["reset_at"] = reset["reset_at"] if reset else None
         order["previous_attempts"] = json.loads(reset["previous_attempts"]) if reset else []
-        order["delay_updated_at"] = (
-            delay_update["updated_at"] if delay_update else None
+        order["retry_updated_at"] = (
+            retry_update["updated_at"] if retry_update else None
         )
-        order["start_delay_seconds"] = (
-            delay_update["start_delay_seconds"] if delay_update else 10
+        order["retry_maximum_attempts"] = (
+            retry_update["maximum_attempts"] if retry_update else 20
         )
+        order["start_delay_seconds"] = 10
         return order
 
-    def record_start_delay_update(
-        self, order_id: str, start_delay_seconds: int
+    def record_retry_option_update(
+        self, order_id: str, maximum_attempts: int
     ) -> None:
         with self._connect() as connection:
             connection.execute(
                 """
-                INSERT INTO start_delay_updates (
-                    order_id, updated_at, start_delay_seconds
+                INSERT INTO retry_option_updates (
+                    order_id, updated_at, maximum_attempts
                 ) VALUES (?, ?, ?)
                 """,
-                (order_id, _now(), start_delay_seconds),
+                (order_id, _now(), maximum_attempts),
             )
 
     def fix_downstream_bug(self, order_id: str) -> None:

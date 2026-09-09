@@ -1,29 +1,27 @@
 # Module 06: Update Activity options
 
-This module demonstrates changing a Standalone Activity's options before its
-first dispatch:
+This module demonstrates changing a running Standalone Activity's retry policy:
 
 ```text
-Place order → 10-second start delay
-                       ↓ update options
-              5-second start delay → Worker dispatch → confirmation
+Attempt 1 fails → retries continue with maximum attempts = 20
+                              ↓ update options
+                   maximum attempts = 5 → terminal failure
 ```
 
 Choose **06 · Update Activity options** on the checkout page, then click
-**Update start delay to 5s** before the Activity starts. Temporal updates the
-existing Activity Execution; the application does not cancel and reschedule
-it.
+**Set maximum attempts to 5** while the Activity is retrying. Temporal updates
+the existing Activity Execution; the application does not cancel and
+reschedule it.
 
-The updated delay is measured from the Activity's original schedule time, as
-defined by Temporal. Updating after five seconds therefore makes the Activity
-available immediately.
+The downstream webhook continues returning HTTP 503. Once attempt five fails,
+Temporal applies the updated limit and stops retrying.
 
 ## Prerelease requirement
 
-Start-delay updates currently require the prerelease Temporal Server and CLI.
-The Python SDK can schedule the initial delay but does not yet expose the
-prerelease `UpdateActivityOptions` RPC, so this demo invokes the prerelease CLI
-for the operator action.
+Activity option updates currently require the prerelease Temporal Server and
+CLI. The Python SDK does not yet expose the prerelease
+`UpdateActivityOptions` RPC, so this demo invokes the prerelease CLI for the
+operator action.
 
 Set `TEMPORAL_CLI_PATH` if the prerelease CLI is not located at
 `../temporal-cli-prerelease/temporal` relative to this repository:

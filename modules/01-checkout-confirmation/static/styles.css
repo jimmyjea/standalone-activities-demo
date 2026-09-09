@@ -706,9 +706,166 @@ button:disabled {
   background: #f0f2f1;
 }
 
+.update-options-help {
+  grid-column: 1 / -1;
+  padding-top: 22px;
+  border-top: 1px solid #e5d5b8;
+}
+
+.update-options-help.hidden {
+  display: none;
+}
+
+.update-options-help > p {
+  margin: 0 0 16px;
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.update-options-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+}
+
+.update-options-grid strong {
+  font-size: 13px;
+}
+
+.update-options-grid ul {
+  margin: 10px 0 0;
+  padding-left: 18px;
+}
+
+.update-options-grid li,
+.update-options-grid section p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.update-options-grid code {
+  color: #76500d;
+  font-size: 11px;
+}
+
+.batch-status {
+  grid-column: 1 / -1;
+}
+
+.batch-status.hidden,
+.batch-cli.hidden {
+  display: none;
+}
+
+.batch-activity-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.batch-activity {
+  padding: 9px 11px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  border: 1px solid #e5d5b8;
+  border-radius: 10px;
+  background: white;
+}
+
+.batch-activity code {
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 10px;
+  text-overflow: ellipsis;
+}
+
+.batch-activity span {
+  flex: none;
+  color: #76500d;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.batch-activity.cancel-requested span,
+.batch-activity.completed span {
+  color: var(--green);
+}
+
+.batch-cli {
+  margin-top: 20px;
+  padding: 18px;
+  border-radius: 14px;
+  color: white;
+  background: #17352a;
+}
+
+.batch-cli strong {
+  font-size: 13px;
+}
+
+.batch-cli p {
+  margin: 9px 0 0;
+  color: #b9d7ca;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.batch-cli p.hidden {
+  display: none;
+}
+
+.batch-cli pre {
+  margin: 12px 0 0;
+  overflow-x: auto;
+  color: #d9f2e7;
+  font-size: 11px;
+  line-height: 1.6;
+}
+
 .operator-card > .error {
   grid-column: 1 / -1;
   margin: -16px 0 0;
+}
+
+.batch-mode .checkout-layout {
+  max-width: 520px;
+  grid-template-columns: 1fr;
+}
+
+.batch-mode .checkout-panel {
+  min-height: 280px;
+  display: grid;
+  place-items: center;
+}
+
+.batch-mode .checkout-panel > .eyebrow,
+.batch-mode .checkout-panel > h1,
+.batch-mode .checkout-panel > .lede,
+.batch-mode #checkout-form > label,
+.batch-mode #checkout-form > .card-fields,
+.batch-mode .order-panel,
+.batch-mode #submit-button strong {
+  display: none;
+}
+
+.batch-mode #checkout-form {
+  width: 100%;
+  max-width: 320px;
+}
+
+.batch-mode #submit-button {
+  justify-content: center;
+}
+
+.success-card.hidden {
+  display: none;
+}
+
+.confirmation-layout.batch-confirmation .delivery-card {
+  grid-column: 1 / -1;
 }
 
 @media (max-width: 780px) {
@@ -736,6 +893,14 @@ button:disabled {
   }
 
   .operator-card {
+    grid-template-columns: 1fr;
+  }
+
+  .update-options-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .batch-activity-list {
     grid-template-columns: 1fr;
   }
 }

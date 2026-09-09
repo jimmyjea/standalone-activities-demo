@@ -124,25 +124,55 @@ def test_delayed_activity_id_selects_start_delay_module(tmp_path):
     assert order["module"] == "start-delay"
 
 
-def test_start_delay_update_is_returned_with_order(tmp_path):
+def test_retry_option_update_is_returned_with_order(tmp_path):
     store = DemoStore(tmp_path / "test.db")
     store.create_order(
         order_id="DEMO-UPDATE",
         customer_name="Jordan Lee",
         email="jordan@example.com",
         total="$128.00",
-        activity_id="updated-delay-confirmation:DEMO-UPDATE",
+        activity_id="options-confirmation:DEMO-UPDATE",
     )
 
     before = store.get_order("DEMO-UPDATE")
     assert before is not None
     assert before["module"] == "update-options"
-    assert before["start_delay_seconds"] == 10
-    assert before["delay_updated_at"] is None
+    assert before["retry_maximum_attempts"] == 20
+    assert before["retry_updated_at"] is None
 
-    store.record_start_delay_update("DEMO-UPDATE", 5)
+    store.record_retry_option_update("DEMO-UPDATE", 5)
 
     after = store.get_order("DEMO-UPDATE")
     assert after is not None
-    assert after["start_delay_seconds"] == 5
-    assert after["delay_updated_at"] is not None
+    assert after["retry_maximum_attempts"] == 5
+    assert after["retry_updated_at"] is not None
+
+
+def test_batch_group_id_selects_batch_commands_module(tmp_path):
+    store = DemoStore(tmp_path / "test.db")
+    store.create_order(
+        order_id="DEMO-BATCH",
+        customer_name="Jordan Lee",
+        email="jordan@example.com",
+        total="$128.00",
+        activity_id="batch-group:DEMO-BATCH",
+    )
+
+    order = store.get_order("DEMO-BATCH")
+    assert order is not None
+    assert order["module"] == "batch-commands"
+
+
+def test_search_group_id_selects_search_attributes_module(tmp_path):
+    store = DemoStore(tmp_path / "test.db")
+    store.create_order(
+        order_id="DEMO-SEARCH",
+        customer_name="Jordan Lee",
+        email="jordan@example.com",
+        total="$128.00",
+        activity_id="search-group:DEMO-SEARCH",
+    )
+
+    order = store.get_order("DEMO-SEARCH")
+    assert order is not None
+    assert order["module"] == "search-attributes"

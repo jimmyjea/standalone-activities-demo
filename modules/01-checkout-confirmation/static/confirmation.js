@@ -10,18 +10,35 @@ function secondsUntilDispatch(order) {
   return Math.max(0, Math.ceil((dispatchAt - Date.now()) / 1000));
 }
 
+function formatDelay(seconds) {
+  if (seconds < 60) return `${seconds}s`;
+  return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+}
+
 function renderAttempts(order) {
-  if (!["webhook-retries", "pause-unpause", "reset"].includes(order.module)) return;
+  if (
+    !["webhook-retries", "pause-unpause", "reset", "update-options"].includes(
+      order.module,
+    )
+  )
+    return;
 
   const pauseDemo = order.module === "pause-unpause";
   const resetDemo = order.module === "reset";
+  const updateDemo = order.module === "update-options";
   byId("module-title").textContent = pauseDemo
     ? "Pausable Activity"
     : resetDemo
       ? "Resettable Activity"
+      : updateDemo
+        ? "Updatable Activity"
       : "Retrying webhook";
   byId("retry-panel").classList.remove("hidden");
-  const maximumAttempts = pauseDemo || resetDemo ? 20 : 3;
+  const maximumAttempts = updateDemo
+    ? order.retry_maximum_attempts
+    : pauseDemo || resetDemo
+      ? 20
+      : 3;
   const currentAttempt = order.temporal_attempt || order.attempts.length;
   const displayedAttempts =
     resetDemo && order.reset_at ? order.previous_attempts : order.attempts;
@@ -35,7 +52,7 @@ function renderAttempts(order) {
   const attemptList = byId("attempt-list");
   attemptList.replaceChildren();
   let attemptNumbers = Array.from({ length: maximumAttempts }, (_, index) => index + 1);
-  if (pauseDemo || resetDemo) {
+  if (pauseDemo || resetDemo || updateDemo) {
     const lastVisible = Math.min(Math.max(currentAttempt + 1, 3), maximumAttempts);
     attemptNumbers = attemptNumbers.slice(Math.max(0, lastVisible - 6), lastVisible);
   }
@@ -50,7 +67,7 @@ function renderAttempts(order) {
     detail.textContent = recorded
       ? recorded.status === "delivered"
         ? "200 · Accepted"
-        : pauseDemo || resetDemo
+        : pauseDemo || resetDemo || updateDemo
           ? "503 · Downstream bug"
           : "503 · Intermittent failure"
       : "Waiting";
@@ -61,12 +78,144 @@ function renderAttempts(order) {
 
 function renderOperator(order) {
   if (
-    !["pause-unpause", "reset", "start-delay", "update-options"].includes(order.module)
+    ![
+      "pause-unpause",
+      "reset",
+      "start-delay",
+      "update-options",
+      "batch-commands",
+      "search-attributes",
+    ].includes(order.module)
   )
     return;
 
   byId("operator-panel").classList.remove("hidden");
   byId("activity-step").querySelector("strong").textContent = "Standalone Activity";
+  if (order.module === "batch-commands") {
+    byId("module-title").textContent = "Batch operator commands";
+    byId("operator-panel").querySelector("h2").textContent =
+      "10 long-running Activities";
+    byId("pause-button").classList.add("hidden");
+    byId("unpause-button").classList.add("hidden");
+    byId("reset-button").classList.add("hidden");
+    byId("cancel-button").classList.add("hidden");
+    byId("update-retries-button").classList.add("hidden");
+    byId("update-options-help").classList.add("hidden");
+    byId("bug-state").classList.add("hidden");
+    byId("pause-state").className = order.all_canceled
+      ? "paused-pill"
+      : "neutral-pill";
+    byId("pause-state").textContent = order.all_canceled
+      ? "10 Activities canceled"
+      : `${order.canceled_count} / 10 Activities canceled`;
+    byId("operator-detail").textContent = order.all_canceled
+      ? "All 10 Activities observed cancellation through their heartbeats."
+      : order.all_cancellation_requested
+        ? "Cancellation was requested. Waiting for the next heartbeats."
+        : "Select these Activities in Temporal UI and run the batch Cancel action.";
+
+    byId("batch-status").classList.remove("hidden");
+    const list = byId("batch-activity-list");
+    list.replaceChildren();
+    for (const item of order.batch_activities) {
+      const row = document.createElement("div");
+      const canceled = item.status === 4;
+      const cancellationRequested = item.run_state === 3;
+      row.className = `batch-activity ${canceled || cancellationRequested ? "cancel-requested" : "running"}`;
+      const id = document.createElement("code");
+      id.textContent = item.activity_id;
+      const state = document.createElement("span");
+      state.textContent = canceled
+        ? "Canceled"
+        : cancellationRequested
+          ? "Cancel requested"
+          : "Running";
+      row.append(id, state);
+      list.append(row);
+    }
+
+    byId("batch-cli").classList.toggle(
+      "hidden",
+      !order.all_canceled,
+    );
+    byId("batch-cli-heading").textContent =
+      "Run the same batch cancellation from the CLI:";
+    byId("batch-cli-note").classList.add("hidden");
+    byId("batch-cli-command").textContent =
+      `temporal activity cancel \\\n` +
+      `  --query 'ActivityId STARTS_WITH "batch-long-running:${order.id}:"' \\\n` +
+      `  --reason "Cancel demo batch" \\\n` +
+      `  --yes`;
+    return;
+  }
+
+  if (order.module === "search-attributes") {
+    byId("module-title").textContent = "Search Attributes";
+    byId("operator-panel").querySelector("h2").textContent =
+      "Mixed Activity executions";
+    byId("pause-button").classList.add("hidden");
+    byId("unpause-button").classList.add("hidden");
+    byId("reset-button").classList.add("hidden");
+    byId("cancel-button").classList.add("hidden");
+    byId("update-retries-button").classList.add("hidden");
+    byId("update-options-help").classList.add("hidden");
+    byId("bug-state").className = "fixed-pill";
+    byId("bug-state").textContent = `${order.completed_count} completed`;
+    byId("pause-state").className = order.all_long_running_canceled
+      ? "paused-pill"
+      : "neutral-pill";
+    byId("pause-state").textContent =
+      `${order.canceled_count} / 5 long-running canceled`;
+    byId("operator-detail").textContent = order.all_long_running_canceled
+      ? "The five long-running Activities received cancellation through heartbeats."
+      : "Five Activities completed immediately. Find and cancel the five still running.";
+
+    byId("batch-status").classList.remove("hidden");
+    const list = byId("batch-activity-list");
+    list.replaceChildren();
+    for (const item of order.search_activities) {
+      const row = document.createElement("div");
+      const canceled = item.status === 4;
+      const completed = item.status === 2;
+      const cancellationRequested = item.run_state === 3;
+      row.className = `batch-activity ${
+        completed
+          ? "completed"
+          : canceled || cancellationRequested
+            ? "cancel-requested"
+            : "running"
+      }`;
+      const id = document.createElement("code");
+      id.textContent = item.activity_id;
+      const state = document.createElement("span");
+      state.textContent = completed
+        ? "Completed"
+        : canceled
+          ? "Canceled"
+          : cancellationRequested
+            ? "Cancel requested"
+            : "Running";
+      row.append(id, state);
+      list.append(row);
+    }
+
+    byId("batch-cli").classList.toggle(
+      "hidden",
+      !order.all_long_running_canceled,
+    );
+    byId("batch-cli-heading").textContent =
+      "Cancel running Activities with a built-in Search Attribute:";
+    byId("batch-cli-note").classList.remove("hidden");
+    byId("batch-cli-note").textContent =
+      "You can also add custom Search Attributes when starting an Activity to filter by business-specific metadata.";
+    byId("batch-cli-command").textContent =
+      `temporal activity cancel \\\n` +
+      `  --query 'ExecutionStatus = "Running"' \\\n` +
+      `  --reason "Cancel running Activities" \\\n` +
+      `  --yes`;
+    return;
+  }
+
   if (order.module === "start-delay") {
     const canCancel =
       order.temporal_status === 1 && !order.activity_started && order.status !== "canceled";
@@ -75,7 +224,7 @@ function renderOperator(order) {
     byId("pause-button").classList.add("hidden");
     byId("unpause-button").classList.add("hidden");
     byId("reset-button").classList.add("hidden");
-    byId("update-delay-button").classList.add("hidden");
+    byId("update-retries-button").classList.add("hidden");
     byId("cancel-button").classList.remove("hidden");
     byId("cancel-button").disabled = !canCancel;
     byId("bug-state").classList.add("hidden");
@@ -96,28 +245,29 @@ function renderOperator(order) {
   if (order.module === "update-options") {
     const canUpdate =
       order.temporal_status === 1 &&
-      !order.activity_started &&
-      !order.delay_updated_at;
+      !order.retry_updated_at;
     byId("module-title").textContent = "Updatable Activity";
-    byId("operator-panel").querySelector("h2").textContent = "Activity options";
+    byId("operator-panel").querySelector("h2").textContent = "Retry policy";
     byId("pause-button").classList.add("hidden");
     byId("unpause-button").classList.add("hidden");
     byId("reset-button").classList.add("hidden");
     byId("cancel-button").classList.add("hidden");
-    byId("update-delay-button").classList.remove("hidden");
-    byId("update-delay-button").disabled = !canUpdate;
-    byId("bug-state").classList.add("hidden");
-    byId("pause-state").className = order.delay_updated_at
+    byId("update-retries-button").classList.remove("hidden");
+    byId("update-retries-button").disabled = !canUpdate;
+    byId("update-options-help").classList.toggle(
+      "hidden",
+      !order.retry_updated_at,
+    );
+    byId("bug-state").className = "incident-pill";
+    byId("bug-state").textContent = "● Downstream unavailable";
+    byId("pause-state").className = order.retry_updated_at
       ? "fixed-pill"
       : "neutral-pill";
-    byId("pause-state").textContent = order.activity_started
-      ? "Activity started"
-      : order.delay_updated_at
-        ? `Updated · starts in ${secondsUntilDispatch(order)}s`
-        : `10-second delay · ${secondsUntilDispatch(order)}s left`;
-    byId("operator-detail").textContent = order.delay_updated_at
-      ? "Temporal changed the existing Activity's start delay from 10 seconds to 5."
-      : "Update the scheduled Activity to shorten its original start delay to five seconds.";
+    byId("pause-state").textContent =
+      `Maximum attempts · ${order.retry_maximum_attempts}`;
+    byId("operator-detail").textContent = order.retry_updated_at
+      ? "Temporal updated the running Activity's retry policy to stop after five attempts."
+      : "The Activity can retry 20 times. Reduce the maximum attempts to five.";
     return;
   }
 
@@ -171,6 +321,53 @@ function render(order) {
   renderAttempts(order);
   renderOperator(order);
 
+  if (order.module === "batch-commands") {
+    byId("payment-accepted-card").classList.add("hidden");
+    document
+      .querySelector(".confirmation-layout")
+      .classList.add("batch-confirmation");
+    const badge = byId("status-badge");
+    badge.className = order.all_canceled
+      ? "status-badge paused"
+      : "status-badge queued";
+    badge.textContent = order.all_canceled
+      ? "10 Activities canceled"
+      : "10 Activities running";
+    byId("activity-step").className = "active";
+    byId("webhook-step").querySelector("strong").textContent = "Batch cancellation";
+    byId("webhook-step").querySelector("small").textContent =
+      `${order.canceled_count} of 10 canceled`;
+    byId("status-detail").textContent = order.all_canceled
+      ? "Each Activity heartbeat received the cancellation and stopped its running work."
+      : order.all_cancellation_requested
+        ? "Cancellation requested; heartbeats are moving the Activities to Canceled."
+        : "Use Temporal UI to select all 10 Activities and request cancellation.";
+    return order.all_canceled;
+  }
+
+  if (order.module === "search-attributes") {
+    byId("payment-accepted-card").classList.add("hidden");
+    document
+      .querySelector(".confirmation-layout")
+      .classList.add("batch-confirmation");
+    const badge = byId("status-badge");
+    badge.className = order.all_long_running_canceled
+      ? "status-badge paused"
+      : "status-badge queued";
+    badge.textContent = order.all_long_running_canceled
+      ? "Search complete"
+      : `${order.completed_count} completed · ${10 - order.completed_count - order.canceled_count} running`;
+    byId("activity-step").className = "active";
+    byId("webhook-step").querySelector("strong").textContent =
+      "Search Attribute filter";
+    byId("webhook-step").querySelector("small").textContent =
+      'ExecutionStatus = "Running"';
+    byId("status-detail").textContent = order.all_long_running_canceled
+      ? "The running executions were identified and canceled."
+      : "Use the ExecutionStatus Search Attribute to find the five running Activities.";
+    return order.all_long_running_canceled;
+  }
+
   if (order.status === "canceled" || order.temporal_status === 4) {
     const badge = byId("status-badge");
     badge.className = "status-badge canceled";
@@ -199,9 +396,19 @@ function render(order) {
         ? "Attempts 1 and 2 failed with HTTP 503. Temporal retried and attempt 3 delivered."
         : order.module === "reset"
           ? "The operator repaired and reset the running Activity; the reset attempt completed."
-          : order.module === "update-options"
-            ? "Temporal applied the updated five-second start delay and completed the Activity."
         : "The Worker completed the Activity and the idempotent webhook recorded its receipt.";
+    return true;
+  }
+
+  if (order.module === "update-options" && order.temporal_status === 3) {
+    const badge = byId("status-badge");
+    badge.className = "status-badge failed";
+    badge.textContent = "Attempts exhausted";
+    byId("activity-step").className = "failed";
+    byId("webhook-step").querySelector("small").textContent =
+      `${order.attempts.length} failed webhook calls`;
+    byId("status-detail").textContent =
+      "Temporal stopped retrying after reaching the updated maximum of five attempts.";
     return true;
   }
 
@@ -214,24 +421,34 @@ function render(order) {
   }
 
   const failedAttempts = order.attempts.filter((attempt) => attempt.status === "failed");
-  if (["start-delay", "update-options"].includes(order.module)) {
+  if (order.module === "start-delay") {
     const badge = byId("status-badge");
     if (order.activity_started) {
       badge.className = "status-badge queued";
       badge.innerHTML = '<span class="spinner"></span> Processing';
       byId("status-detail").textContent =
-        `The ${order.start_delay_seconds || 10}-second start delay elapsed and Temporal dispatched the Activity.`;
+        `The ${formatDelay(order.start_delay_seconds || 10)} start delay elapsed and Temporal dispatched the Activity.`;
     } else {
       const seconds = secondsUntilDispatch(order);
       badge.className = "status-badge queued";
-      badge.textContent = `Scheduled · ${seconds}s`;
+      badge.textContent = `Scheduled · ${formatDelay(seconds)}`;
       byId("status-detail").textContent =
-        order.module === "update-options"
-          ? order.delay_updated_at
-            ? "Temporal updated the scheduled Activity to use a five-second start delay."
-            : "The Activity has a 10-second delay. Use Update options to shorten it to five."
-          : "Cancel now, or Temporal will dispatch the confirmation when the delay expires.";
+        "Cancel now, or Temporal will dispatch the confirmation when the delay expires.";
     }
+    return false;
+  }
+
+  if (order.module === "update-options") {
+    const badge = byId("status-badge");
+    badge.className = "status-badge queued";
+    badge.innerHTML =
+      `<span class="spinner"></span> Retrying · attempt ${order.temporal_attempt}`;
+    byId("webhook-step").className = "active";
+    byId("webhook-step").querySelector("small").textContent =
+      `${failedAttempts.length} failed webhook call${failedAttempts.length === 1 ? "" : "s"}`;
+    byId("status-detail").textContent = order.retry_updated_at
+      ? "Temporal is applying the updated five-attempt limit to this running Activity."
+      : "The downstream issue is failing every attempt; the current policy allows 20 attempts.";
     return false;
   }
 
@@ -295,7 +512,7 @@ async function operatorAction(action) {
         ? "Resetting…"
         : action === "cancel"
           ? "Canceling…"
-          : action === "update-delay"
+          : action === "update-retries"
             ? "Updating…"
           : "Unpausing…";
   try {
@@ -319,8 +536,8 @@ byId("pause-button").addEventListener("click", () => operatorAction("pause"));
 byId("unpause-button").addEventListener("click", () => operatorAction("unpause"));
 byId("reset-button").addEventListener("click", () => operatorAction("reset"));
 byId("cancel-button").addEventListener("click", () => operatorAction("cancel"));
-byId("update-delay-button").addEventListener("click", () =>
-  operatorAction("update-delay"),
+byId("update-retries-button").addEventListener("click", () =>
+  operatorAction("update-retries"),
 );
 
 async function poll() {
