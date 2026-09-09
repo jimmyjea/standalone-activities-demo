@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Order confirmed — Fablefox Supply</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="/static/confirmation.js" defer></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/">
+        <span class="brand-mark">F</span>
+        <span>Fablefox Supply</span>
+      </a>
+    </header>
+
+    <main class="confirmation-layout">
+      <section class="success-card">
+        <div class="checkmark">✓</div>
+        <div class="eyebrow">Payment accepted</div>
+        <h1>Thanks, <span id="customer-name">your order is in</span>.</h1>
+        <p>
+          Order <strong id="order-id">—</strong> is confirmed. You can leave this page;
+          the delivery is durable.
+        </p>
+      </section>
+
+      <section class="delivery-card">
+        <div class="delivery-heading">
+          <div>
+            <div class="eyebrow">Confirmation delivery</div>
+            <h2 id="module-title">Temporal Activity</h2>
+          </div>
+          <span id="status-badge" class="status-badge queued">
+            <span class="spinner"></span>
+            Queued
+          </span>
+        </div>
+
+        <ol class="timeline">
+          <li class="complete">
+            <span></span>
+            <div><strong>Order accepted</strong><small>Web request completed</small></div>
+          </li>
+          <li id="activity-step" class="active">
+            <span></span>
+            <div>
+              <strong>Standalone Activity</strong>
+              <small id="activity-id">Scheduling…</small>
+            </div>
+          </li>
+          <li id="webhook-step">
+            <span></span>
+            <div><strong>Webhook delivered</strong><small>Waiting for receipt</small></div>
+          </li>
+        </ol>
+
+        <div id="retry-panel" class="retry-panel hidden">
+          <div class="retry-heading">
+            <strong>Webhook attempts</strong>
+            <span id="attempt-count">0 / 3</span>
+          </div>
+          <div id="attempt-list" class="attempt-list"></div>
+        </div>
+
+        <div id="inbox" class="inbox hidden">
+          <div class="inbox-toolbar">
+            <span>Mock inbox</span>
+            <span id="delivered-at"></span>
+          </div>
+          <div class="email-preview">
+            <div class="avatar">F</div>
+            <div class="email-content">
+              <strong id="email-subject"></strong>
+              <span>Fablefox Supply &lt;orders@fablefox.test&gt;</span>
+              <p id="email-message"></p>
+              <small>Receipt <code id="provider-id"></code></small>
+            </div>
+          </div>
+        </div>
+
+        <p id="status-detail" class="status-detail">
+          Checkout returned immediately. Waiting for a Worker to process the job…
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

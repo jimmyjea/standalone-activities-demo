@@ -1,0 +1,27 @@
+[project]
+name = "standalone-activities-demo"
+version = "0.1.0"
+description = "Modular demos for Temporal Standalone Activities"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "email-validator>=2.2,<3",
+    "fastapi>=0.116,<1",
+    "httpx>=0.28,<1",
+    "temporalio>=1.30,<2",
+    "uvicorn[standard]>=0.35,<1",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4,<9",
+    "ruff>=0.12,<1",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.pytest.ini_options]
+pythonpath = ["modules/01-checkout-confirmation"]
+testpaths = ["modules/01-checkout-confirmation/tests"]
