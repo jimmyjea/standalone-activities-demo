@@ -1,0 +1,16 @@
+{
+  "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+  "python.analysis.extraPaths": [
+    "${workspaceFolder}/modules/01-checkout-confirmation",
+    "${workspaceFolder}/modules/02-webhook-retries",
+    "${workspaceFolder}/modules/03-pause-unpause",
+    "${workspaceFolder}/modules/04-reset",
+    "${workspaceFolder}/modules/05-start-delay",
+    "${workspaceFolder}/modules/06-update-options",
+    "${workspaceFolder}/modules/07-batch-commands",
+    "${workspaceFolder}/modules/08-search-attributes",
+    "${workspaceFolder}/modules/09-long-running",
+    "${workspaceFolder}/modules/10-fairness",
+    "${workspaceFolder}/modules/11-activity-reuse"
+  ]
+}

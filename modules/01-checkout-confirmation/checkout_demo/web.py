@@ -48,6 +48,9 @@ CANCELED_ACTIVITY_STATUS = 4
 COMPLETED_ACTIVITY_STATUS = 2
 CANCEL_REQUESTED_RUN_STATE = 3
 BATCH_SIZE = 10
+LONG_RUNNING_CONFIRMATION_TOTAL = 40
+FAIRNESS_SMALL_TOTAL = 20
+FAIRNESS_LARGE_TOTAL = 40
 
 
 def _search_attribute_jobs(order_id: str) -> list[SearchAttributeJob]:
@@ -63,7 +66,7 @@ def _search_attribute_jobs(order_id: str) -> list[SearchAttributeJob]:
 
 def _fairness_jobs(order_id: str) -> list[FairnessConfirmationInput]:
     jobs: list[FairnessConfirmationInput] = []
-    for index in range(1, 11):
+    for index in range(1, FAIRNESS_SMALL_TOTAL + 1):
         jobs.append(
             FairnessConfirmationInput(
                 activity_id=f"fairness:{order_id}:small:{index:02}",
@@ -281,7 +284,7 @@ async def checkout(request: CheckoutRequest) -> dict[str, str]:
                 args=[activity_input],
                 id=activity_id,
                 task_queue=TASK_QUEUE,
-                start_delay=timedelta(seconds=10),
+                start_delay=timedelta(seconds=60),
                 schedule_to_close_timeout=timedelta(minutes=1),
                 start_to_close_timeout=timedelta(seconds=20),
                 retry_policy=RetryPolicy(maximum_attempts=3),
@@ -418,7 +421,8 @@ async def get_order(order_id: str) -> dict:
             for item in order["fairness_activities"]
         )
         order["fairness_complete"] = (
-            order["small_completed"] == 10 and order["large_completed"] == 20
+            order["small_completed"] == FAIRNESS_SMALL_TOTAL
+            and order["large_completed"] == FAIRNESS_LARGE_TOTAL
         )
         return order
     if order["module"] == "search-attributes":
@@ -472,7 +476,7 @@ async def get_order(order_id: str) -> dict:
                 order["batched_confirmation_count"],
             )
             if info.status == COMPLETED_ACTIVITY_STATUS:
-                heartbeat_confirmed_count = 20
+                heartbeat_confirmed_count = LONG_RUNNING_CONFIRMATION_TOTAL
             order["heartbeat_confirmed_count"] = heartbeat_confirmed_count
             order["worker_running"] = _worker_pid() is not None
     return order
@@ -738,10 +742,13 @@ async def record_confirmation_batch(
         raise HTTPException(status_code=409, detail="Invalid confirmation batch")
     if (
         request.first_confirmation < 1
-        or request.last_confirmation > 20
-        or request.last_confirmation - request.first_confirmation != 1
+        or request.last_confirmation > LONG_RUNNING_CONFIRMATION_TOTAL
+        or request.last_confirmation != request.first_confirmation
     ):
-        raise HTTPException(status_code=400, detail="A batch must contain two confirmations")
+        raise HTTPException(
+            status_code=400,
+            detail="Each heartbeat must record one confirmation",
+        )
     confirmed_count = store.record_confirmation_batch(
         activity_id=request.activity_id,
         first_confirmation=request.first_confirmation,

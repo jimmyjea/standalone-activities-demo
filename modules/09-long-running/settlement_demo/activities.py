@@ -4,12 +4,14 @@ import httpx
 from checkout_demo.models import BatchConfirmationInput
 from temporalio import activity
 
+TOTAL_CONFIRMATIONS = 40
+
 
 @activity.defn(name="send_batched_confirmations")
 async def send_batched_confirmations(
     input: BatchConfirmationInput,
 ) -> dict[str, int | str]:
-    """Send 20 confirmations in resumable batches of two."""
+    """Send 40 confirmations with one heartbeat checkpoint per confirmation."""
     heartbeat_details = activity.info().heartbeat_details
     confirmed_count = (
         int(heartbeat_details[0].get("confirmed_count", 0))
@@ -17,9 +19,9 @@ async def send_batched_confirmations(
         else 0
     )
 
-    while confirmed_count < 20:
+    while confirmed_count < TOTAL_CONFIRMATIONS:
         await asyncio.sleep(1)
-        next_count = min(confirmed_count + 2, 20)
+        next_count = confirmed_count + 1
         async with httpx.AsyncClient(timeout=10) as client:
             response = await client.post(
                 input.batch_url,

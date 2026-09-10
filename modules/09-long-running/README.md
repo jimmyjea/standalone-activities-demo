@@ -4,15 +4,15 @@ This module demonstrates resuming a long-running Standalone Activity from
 heartbeat details after a Worker failure:
 
 ```text
-Generate → send 2 confirmations/second → heartbeat checkpoint
+Generate → send confirmation → heartbeat checkpoint → repeat
                           ↓ kill Worker
-             bring Worker back → resume after checkpoint → 20 sent
+             bring Worker back → resume after checkpoint → 40 sent
 ```
 
 Choose **09 · Long-running jobs** and click **Batch Confirmations**.
 Temporal starts one `send_batched_confirmations` Standalone Activity. Each
-second it records two confirmations and heartbeats the cumulative count. An
-uninterrupted run sends 20 confirmations in 10 seconds.
+second it records one confirmation and heartbeats the cumulative count. An
+uninterrupted run sends 40 confirmations in 40 seconds.
 
 Use **Kill Worker** while processing is underway, then click **Bring Worker
 Back**. After the heartbeat timeout, Temporal dispatches a retry to the new

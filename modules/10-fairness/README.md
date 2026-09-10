@@ -4,8 +4,8 @@ This module demonstrates weighted Task Queue fairness with Standalone
 Activities:
 
 ```text
-t=0s   Small merchant: 10 confirmations, weight 1
-       Large merchant: 20 confirmations, weight 2
+t=0s   Small merchant: 20 confirmations, weight 1
+       Large merchant: 40 confirmations, weight 2
        Shared three-slot Worker → weighted fair dispatch
 ```
 

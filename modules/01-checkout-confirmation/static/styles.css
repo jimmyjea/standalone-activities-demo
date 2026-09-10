@@ -238,6 +238,21 @@ input:disabled {
   background: #edf7f1;
 }
 
+.checkout-layout.module-changing {
+  animation: module-layout-change 360ms ease both;
+}
+
+@keyframes module-layout-change {
+  0% {
+    opacity: 0.55;
+    transform: translateY(5px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .card-fields {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -1189,5 +1204,11 @@ button:disabled {
 
   .fairness-status {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .checkout-layout.module-changing {
+    animation: none;
   }
 }

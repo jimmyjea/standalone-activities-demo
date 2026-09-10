@@ -207,7 +207,7 @@ class DemoStore:
         order["retry_maximum_attempts"] = (
             retry_update["maximum_attempts"] if retry_update else 20
         )
-        order["start_delay_seconds"] = 10
+        order["start_delay_seconds"] = 60
         order["batched_confirmation_count"] = batched_confirmation_count
         order["batched_confirmations"] = [
             dict(confirmation) for confirmation in batched_confirmations

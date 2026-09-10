@@ -17,7 +17,7 @@ Activities primitive. Standalone Activities are currently **Public Preview**.
 4. [`04-reset`](modules/04-reset/README.md) — an operator deploys a downstream
    fix and resets a repeatedly failing Standalone Activity.
 5. [`05-start-delay`](modules/05-start-delay/README.md) — Temporal delays
-   dispatch for ten seconds, leaving a cancellation window before execution.
+   dispatch for 60 seconds, leaving a cancellation window before execution.
 6. [`06-update-options`](modules/06-update-options/README.md) — an operator
    reduces a repeatedly failing Activity's maximum attempts from 20 to 5.
 7. [`07-batch-commands`](modules/07-batch-commands/README.md) — launch 10
@@ -25,7 +25,7 @@ Activities primitive. Standalone Activities are currently **Public Preview**.
 8. [`08-search-attributes`](modules/08-search-attributes/README.md) — use
    execution status to find and cancel five long-running Activities in a mixed batch.
 9. [`09-long-running`](modules/09-long-running/README.md) — send confirmations
-   in heartbeat-checkpointed batches and recover after a Worker restart.
+   with heartbeat checkpoints and recover after a Worker restart.
 10. [`10-fairness`](modules/10-fairness/README.md) — use weighted fairness to
     interleave confirmation work for small and large merchants.
 11. [`11-activity-reuse`](modules/11-activity-reuse/README.md) — reuse the

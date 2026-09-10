@@ -1,12 +1,15 @@
 const params = new URLSearchParams(window.location.search);
 const orderId = params.get("order_id");
+const LONG_RUNNING_CONFIRMATION_TOTAL = 40;
+const FAIRNESS_SMALL_TOTAL = 20;
+const FAIRNESS_LARGE_TOTAL = 40;
 let pollCount = 0;
 
 const byId = (id) => document.getElementById(id);
 
 function secondsUntilDispatch(order) {
   const dispatchAt =
-    new Date(order.created_at).getTime() + (order.start_delay_seconds || 10) * 1000;
+    new Date(order.created_at).getTime() + (order.start_delay_seconds || 60) * 1000;
   return Math.max(0, Math.ceil((dispatchAt - Date.now()) / 1000));
 }
 
@@ -120,7 +123,7 @@ function renderOperator(order) {
         ? `Rehydrated · attempt ${order.temporal_attempt}`
         : "Attempt 1";
     byId("operator-detail").textContent = completed
-      ? "All 20 confirmations were sent."
+      ? `All ${LONG_RUNNING_CONFIRMATION_TOTAL} confirmations were sent.`
       : order.worker_running
         ? order.temporal_attempt > 1
           ? "The replacement Worker resumed from the last heartbeat checkpoint."
@@ -147,10 +150,10 @@ function renderOperator(order) {
     byId("batch-status").classList.add("hidden");
     byId("bug-state").className = "neutral-pill";
     byId("bug-state").textContent =
-      `Small · ${order.small_completed}/10`;
+      `Small · ${order.small_completed}/${FAIRNESS_SMALL_TOTAL}`;
     byId("pause-state").className = "neutral-pill";
     byId("pause-state").textContent =
-      `Large · ${order.large_completed}/20`;
+      `Large · ${order.large_completed}/${FAIRNESS_LARGE_TOTAL}`;
     byId("operator-detail").textContent = order.fairness_complete
       ? "All confirmations completed without the large merchant starving the small merchant."
       : "Weight 2 gives the large merchant twice the dispatch share while weight 1 keeps the small merchant moving.";
@@ -497,8 +500,11 @@ function render(order) {
   }
 
   if (order.module === "long-running") {
-    const confirmedCount = Math.min(order.heartbeat_confirmed_count || 0, 20);
-    const checkpointCount = Math.floor(confirmedCount / 2);
+    const confirmedCount = Math.min(
+      order.heartbeat_confirmed_count || 0,
+      LONG_RUNNING_CONFIRMATION_TOTAL,
+    );
+    const checkpointCount = confirmedCount;
     const completed = order.temporal_status === 2;
     byId("payment-accepted-card").classList.add("hidden");
     document
@@ -508,14 +514,15 @@ function render(order) {
     byId("activity-step").querySelector("strong").textContent =
       "Batched confirmations";
     byId("webhook-step").querySelector("strong").textContent =
-      "20 confirmations sent";
+      `${LONG_RUNNING_CONFIRMATION_TOTAL} confirmations sent`;
     byId("webhook-step").querySelector("small").textContent = completed
       ? "Batch complete"
       : `${confirmedCount} recorded`;
     byId("settlement-panel").classList.remove("hidden");
     byId("settlement-count").textContent =
-      `${confirmedCount} / 20 confirmations · ${checkpointCount} heartbeats`;
-    byId("settlement-progress").style.width = `${confirmedCount * 5}%`;
+      `${confirmedCount} / ${LONG_RUNNING_CONFIRMATION_TOTAL} confirmations · ${checkpointCount} heartbeats`;
+    byId("settlement-progress").style.width =
+      `${(confirmedCount / LONG_RUNNING_CONFIRMATION_TOTAL) * 100}%`;
     const confirmationResults = byId("confirmation-results");
     confirmationResults.replaceChildren();
     for (const confirmation of order.batched_confirmations.filter(
@@ -539,23 +546,24 @@ function render(order) {
       byId("activity-step").className = "complete";
       byId("webhook-step").className = "complete";
       byId("status-detail").textContent =
-        "The Activity sent all 20 confirmations in 10 resumable batches.";
+        `The Activity sent all ${LONG_RUNNING_CONFIRMATION_TOTAL} confirmations with one heartbeat checkpoint each.`;
       return true;
     }
 
     if (!order.worker_running) {
       badge.className = "status-badge failed";
-      badge.textContent = `Worker offline · ${confirmedCount}/20`;
+      badge.textContent =
+        `Worker offline · ${confirmedCount}/${LONG_RUNNING_CONFIRMATION_TOTAL}`;
       byId("status-detail").textContent =
         `Progress is durable at ${confirmedCount} confirmations. Bring the Worker back to resume.`;
     } else {
       badge.className = "status-badge queued";
       badge.innerHTML =
-        `<span class="spinner"></span> Sending · ${confirmedCount}/20`;
+        `<span class="spinner"></span> Sending · ${confirmedCount}/${LONG_RUNNING_CONFIRMATION_TOTAL}`;
       byId("status-detail").textContent =
         order.temporal_attempt > 1
-          ? "The Worker rehydrated the Activity from heartbeat details and resumed the next batch."
-          : "Every second, the Activity records two confirmations and heartbeats its progress.";
+          ? "The Worker rehydrated the Activity from heartbeat details and resumed with the next confirmation."
+          : "Every second, the Activity records one confirmation and heartbeats its progress.";
     }
     return false;
   }
@@ -694,7 +702,7 @@ function render(order) {
       badge.className = "status-badge queued";
       badge.innerHTML = '<span class="spinner"></span> Processing';
       byId("status-detail").textContent =
-        `The ${formatDelay(order.start_delay_seconds || 10)} start delay elapsed and Temporal dispatched the Activity.`;
+        `The ${formatDelay(order.start_delay_seconds || 60)} start delay elapsed and Temporal dispatched the Activity.`;
     } else {
       const seconds = secondsUntilDispatch(order);
       badge.className = "status-badge queued";

@@ -13,8 +13,8 @@ async def send_order_confirmation(input: SendConfirmationInput) -> dict[str, str
     attempt = activity.info().attempt
     activity.logger.info("Sending confirmation for order %s to %s", input.order_id, input.recipient)
 
-    # A short pause makes the durable background handoff visible during the demo.
-    await asyncio.sleep(1.5)
+    # Keep the Activity running long enough to make the durable handoff visible.
+    await asyncio.sleep(5)
 
     # Keep the provider ID stable across Activity retries.
     provider_message_id = "msg_" + hashlib.sha256(input.activity_id.encode()).hexdigest()[:12]

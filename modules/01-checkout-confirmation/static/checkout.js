@@ -6,6 +6,8 @@ const moduleDescription = document.querySelector("#module-description");
 const moduleMenuButton = document.querySelector("#module-menu-button");
 const moduleMenuLabel = document.querySelector("#module-menu-label");
 const moduleMenu = document.querySelector("#module-menu");
+const checkoutLayout = document.querySelector(".checkout-layout");
+let moduleChangeTimer;
 
 const descriptions = {
   confirmation:
@@ -25,14 +27,15 @@ const descriptions = {
   "search-attributes":
     "Generate 10 Activities, then use Search Attributes to find the five that remain running.",
   "long-running":
-    "One long-running Activity sends confirmations in resumable batches of two.",
+    "One long-running Activity sends confirmations with a heartbeat checkpoint after each one.",
   fairness:
-    "Send 10 small-merchant and 20 large-merchant confirmations through one fair Task Queue.",
+    "Send 20 small-merchant and 40 large-merchant confirmations through one fair Task Queue.",
   "workflow-reuse":
     "A Workflow runs fulfillment steps, then reuses the same confirmation Activity shown standalone.",
 };
 
-function selectModule(value) {
+function selectModule(value, announce = false) {
+  const changed = moduleSelect.value !== value;
   const generatorModule = [
     "batch-commands",
     "search-attributes",
@@ -60,6 +63,16 @@ function selectModule(value) {
   button.querySelector("strong").textContent =
     generatorModule ? "" : "$128.00";
   window.localStorage.setItem("standalone-demo-module", value);
+
+  if (announce && changed) {
+    window.clearTimeout(moduleChangeTimer);
+    checkoutLayout.classList.remove("module-changing");
+    void checkoutLayout.offsetWidth;
+    checkoutLayout.classList.add("module-changing");
+    moduleChangeTimer = window.setTimeout(() => {
+      checkoutLayout.classList.remove("module-changing");
+    }, 360);
+  }
 }
 
 function closeModuleMenu() {
@@ -74,7 +87,7 @@ for (const option of moduleSelect.options) {
   optionButton.setAttribute("role", "option");
   optionButton.textContent = option.textContent;
   optionButton.addEventListener("click", () => {
-    selectModule(option.value);
+    selectModule(option.value, true);
     closeModuleMenu();
     moduleMenuButton.focus();
   });
