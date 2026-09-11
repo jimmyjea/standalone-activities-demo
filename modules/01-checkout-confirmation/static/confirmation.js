@@ -418,7 +418,7 @@ function renderOperator(order) {
       "Temporal has paused retry dispatch. The downstream bug is fixed and ready to test.";
   } else if (bugFixed) {
     byId("operator-detail").textContent =
-      "The bug is fixed. Temporal is dispatching the Activity again.";
+      "The bug is fixed. The unpaused Activity is running for five seconds before completion.";
   }
 }
 

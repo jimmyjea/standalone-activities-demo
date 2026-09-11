@@ -5,13 +5,13 @@ downstream incident:
 
 ```text
 Activity retries every second → operator pauses → bug is fixed
-                                              → operator unpauses → success
+                         → operator unpauses → runs 5 seconds → success
 ```
 
 Choose **03 · Operator pause / unpause** on the checkout page. The confirmation
 page includes a separate operations console. Click **Pause Activity & fix bug**,
 observe that attempts stop, and then click **Unpause Activity** to complete the
-delivery.
+delivery after a five-second successful run.
 
 The retry policy is:
 
@@ -47,8 +47,8 @@ operator APIs; they are not simulated by the application.
 3. The operator pauses the specific Standalone Activity Execution. No new
    attempts are dispatched while it is paused.
 4. The pause action also represents repairing the downstream system.
-5. Unpause dispatches the next attempt, which succeeds without changing the
-   Activity input.
+5. Unpause dispatches the next attempt, which runs for five seconds and
+   succeeds without changing the Activity input.
 
 Use the same server, Worker, and web app commands from
 [Module 01](../01-checkout-confirmation/README.md). Restart the Worker after

@@ -789,6 +789,9 @@ async def confirmation_webhook(
         )
         raise HTTPException(status_code=503, detail=detail)
 
+    if webhook.demo_mode == "pause":
+        await asyncio.sleep(5)
+
     if webhook.demo_mode == "reset" and not order["bug_fixed"]:
         detail = f"Downstream system bug on attempt {temporal_attempt}"
         store.record_delivery_attempt(

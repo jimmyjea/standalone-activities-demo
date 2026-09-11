@@ -1,14 +1,15 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap");
 
 :root {
-  --ink: #16231d;
-  --muted: #6d7872;
-  --line: #dce2de;
-  --paper: #f4f6f3;
-  --white: #ffffff;
-  --green: #176b4d;
-  --green-light: #ddf4e8;
-  --orange: #e8713a;
+  color-scheme: dark;
+  --ink: #edf5f1;
+  --muted: #93a39b;
+  --line: #2b3b33;
+  --paper: #0a100d;
+  --white: #121a16;
+  --green: #35c88a;
+  --green-light: #153b2c;
+  --orange: #ff8a52;
 }
 
 * {
@@ -20,7 +21,7 @@ body {
   min-height: 100vh;
   color: var(--ink);
   background:
-    radial-gradient(circle at 8% 12%, rgba(23, 107, 77, 0.07), transparent 25rem),
+    radial-gradient(circle at 8% 12%, rgba(53, 200, 138, 0.1), transparent 25rem),
     var(--paper);
   font-family: "DM Sans", sans-serif;
 }
@@ -32,7 +33,7 @@ body {
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(10, 16, 13, 0.82);
   backdrop-filter: blur(14px);
 }
 
@@ -71,7 +72,7 @@ body {
   border: 1px solid var(--line);
   border-radius: 24px;
   background: var(--white);
-  box-shadow: 0 18px 55px rgba(23, 44, 34, 0.06);
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.24);
 }
 
 .checkout-panel {
@@ -81,7 +82,7 @@ body {
 .order-panel {
   padding: 38px;
   align-self: start;
-  background: #e9eee9;
+  background: #17211c;
 }
 
 .eyebrow {
@@ -118,7 +119,7 @@ form {
 label {
   display: grid;
   gap: 8px;
-  color: #3c4942;
+  color: #c3d0c9;
   font-size: 13px;
   font-weight: 600;
 }
@@ -128,10 +129,10 @@ select {
   width: 100%;
   padding: 14px 15px;
   color: var(--ink);
-  border: 1px solid #cdd5d0;
+  border: 1px solid #35463d;
   border-radius: 11px;
   outline: none;
-  background: white;
+  background: #0e1612;
   font: inherit;
   transition: border-color 160ms, box-shadow 160ms;
 }
@@ -143,8 +144,8 @@ select:focus {
 }
 
 input:disabled {
-  color: #7a857f;
-  background: #f4f6f4;
+  color: #77877f;
+  background: #101713;
 }
 
 .banner-module-select {
@@ -1160,6 +1161,179 @@ button:disabled {
 
 .confirmation-layout.batch-confirmation .delivery-card {
   grid-column: 1 / -1;
+}
+
+/* Dark surfaces shared by checkout and every module-specific state. */
+.brand-mark,
+button,
+.success-card {
+  background: #176b4d;
+}
+
+button:hover {
+  background: #208b65;
+}
+
+.banner-module-select select,
+.module-menu-button {
+  border-color: #315344;
+  background: #11231b;
+}
+
+.module-menu-button:hover,
+.module-menu button:hover,
+.module-menu button.selected {
+  background: #193328;
+}
+
+.module-menu {
+  border-color: var(--line);
+  background: #111915;
+  box-shadow: 0 18px 48px rgba(0, 0, 0, 0.42);
+}
+
+.product,
+.totals .total {
+  border-color: var(--line);
+}
+
+.demo-note {
+  border-color: #315344;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.error,
+.status-badge.failed,
+.attempt.failed,
+.incident-pill {
+  color: #ff9b9b;
+}
+
+.status-badge.queued,
+.status-badge.paused,
+.workflow-step.active,
+.paused-pill,
+.batch-activity span,
+.dispatch-chip,
+.update-options-grid code {
+  color: #f1c66d;
+}
+
+.status-badge.queued,
+.status-badge.paused,
+.workflow-step.active,
+.paused-pill,
+.dispatch-chip {
+  background: #382f1b;
+}
+
+.status-badge.failed,
+.incident-pill {
+  background: #3a1d20;
+}
+
+.status-badge.canceled,
+.neutral-pill,
+.fairness-job,
+.settlement-track {
+  color: #a7b4ae;
+  background: #27342e;
+}
+
+.spinner {
+  border-color: rgba(241, 198, 109, 0.25);
+  border-top-color: #f1c66d;
+}
+
+.timeline li {
+  color: #708078;
+}
+
+.timeline li > span {
+  border-color: var(--white);
+  background: #43534b;
+  box-shadow: 0 0 0 1px #43534b;
+}
+
+.timeline li.complete::after {
+  background: #276c50;
+}
+
+.retry-panel,
+.settlement-panel,
+.workflow-panel,
+.operator-card {
+  border-color: #4a412d;
+  background: #191a15;
+  box-shadow: 0 18px 55px rgba(0, 0, 0, 0.22);
+}
+
+.workflow-step,
+.confirmation-result,
+.attempt,
+.batch-activity,
+.fairness-merchant,
+.dispatch-window {
+  background: #0f1713;
+}
+
+.confirmation-result {
+  border-color: #294a3c;
+}
+
+.attempt.failed {
+  border-color: #6b3438;
+  background: #271619;
+}
+
+.attempt.delivered {
+  border-color: #286a4f;
+  background: #12281e;
+}
+
+.attempt.waiting {
+  color: #718078;
+}
+
+.inbox-toolbar {
+  background: #18221d;
+}
+
+.operator-actions .secondary-button {
+  border-color: #315344;
+  background: #101713;
+}
+
+.operator-actions .secondary-button:hover {
+  background: #193328;
+}
+
+.operator-actions .secondary-button:disabled {
+  color: #718078;
+  background: #1b231f;
+}
+
+.update-options-help,
+.batch-activity,
+.fairness-merchant,
+.dispatch-window {
+  border-color: #4a412d;
+}
+
+.batch-cli {
+  background: #0d241b;
+}
+
+.fairness-job.processing {
+  color: #17100c;
+}
+
+.fairness-job.completed {
+  color: #07120d;
+}
+
+.fairness-controls-note {
+  color: #a8e6ca;
 }
 
 @media (max-width: 780px) {
