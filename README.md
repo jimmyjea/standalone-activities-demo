@@ -53,13 +53,17 @@ uv sync
 
 From the repository root, use three terminals.
 
-1. Start the Temporal server:
+1. Start the Temporal server (use the dynamic-config-value flags to enable the latest):
 
    ```bash
-   temporal server start-dev
+   temporal server start-dev \
+     --dynamic-config-value history.enableStandaloneActivityOperatorCommands=true \
+     --dynamic-config-value matching.useNewMatcher=true \
+     --dynamic-config-value matching.enableFairness=true \
+     --dynamic-config-value matching.enableMigration=true
    ```
 
-2. Start the shared Worker used by every module:
+2. Start the shared Worker used by every module (this single Worker works across all modules):
 
    ```bash
    uv run python modules/01-checkout-confirmation/run_worker.py
